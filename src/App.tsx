@@ -162,17 +162,16 @@ export default function App() {
   // Home screen
   return (
     <div className="min-h-screen bg-background">
-      {!loading && (
-        <button onClick={() => (user ? signOut() : signIn('github'))}>
-          {user ? `Sign out (${user.name})`: 'Sign in with GitHub'}
-        </button>
-      )}
       <Header
         onSearchFocus={handleSearch}
         searchValue={searchQuery}
         onSearchChange={handleSearchChange}
         enabledRatings={enabledRatings}
         onRatingsChange={handleRatingsChange}
+        user={user}
+        authLoading={loading}
+        onSignIn={() => signIn('github')}
+        onSignOut={signOut}
       />
 
       <main className="px-6 py-6 pb-10">
