@@ -4,8 +4,9 @@ import { ImdbLogo } from '../components/logos/ImdbLogo';
 import { RottenTomatoesLogo } from '../components/logos/RottenTomatoesLogo';
 import { MetacriticLogo } from '../components/logos/MetacriticLogo';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '../ui/dialog';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Movie, EnabledRatings } from '../../models/movie';
+import {loadMovieDetails} from "@/api/movies";
 
 interface MovieDetailsProps {
   movie: Movie;
@@ -31,11 +32,25 @@ function getRatingColor(value: number, platform: 'imdb' | 'rt' | 'metacritic') {
 
 export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetailsProps) {
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
+  const [fullMovie, setFullMovie] = useState<Movie>(movie);
 
-  const imdbRating = movie.ratings.imdb.toFixed(1);
-  const imdbColor = getRatingColor(movie.ratings.imdb, 'imdb');
-  const rtColor = getRatingColor(movie.ratings.rottenTomatoes, 'rt');
-  const metacriticColor = getRatingColor(movie.ratings.metacritic, 'metacritic');
+  useEffect(() => {
+    async function load() {
+      if (movie.ratings.imdb > 0 || movie.imdbId === null) {
+        setFullMovie(movie);
+        return;
+      }
+
+      const merged = await loadMovieDetails(movie.id);
+      setFullMovie(merged);
+    }
+    load();
+  }, [movie]);
+
+  const imdbRating = fullMovie.ratings.imdb.toFixed(1);
+  const imdbColor = getRatingColor(fullMovie.ratings.imdb, 'imdb');
+  const rtColor = getRatingColor(fullMovie.ratings.rottenTomatoes, 'rt');
+  const metacriticColor = getRatingColor(fullMovie.ratings.metacritic, 'metacritic');
 
   const ratingsToShow = enabledRatings || { imdb: true, rottenTomatoes: true, metacritic: true };
 
@@ -61,7 +76,7 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
               Trending
             </button>
             <span>/</span>
-            <span className="text-foreground truncate max-w-xs">{movie.title}</span>
+            <span className="text-foreground truncate max-w-xs">{fullMovie.title}</span>
           </div>
 
           <button
@@ -95,8 +110,8 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
                   }}
                 >
                   <ImageWithFallback
-                    src={movie.posterUrl}
-                    alt={movie.title}
+                    src={fullMovie.posterUrl}
+                    alt={fullMovie.title}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
@@ -106,14 +121,14 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
                 </div>
               </DialogTrigger>
               <DialogContent className="max-w-[95vw] max-h-[95vh] w-auto h-auto p-0 border-0 bg-transparent">
-                <DialogTitle className="sr-only">{movie.title} Poster</DialogTitle>
+                <DialogTitle className="sr-only">{fullMovie.title} Poster</DialogTitle>
                 <DialogDescription className="sr-only">
-                  Full screen view of the movie poster for {movie.title}
+                  Full screen view of the movie poster for {fullMovie.title}
                 </DialogDescription>
                 <div className="relative flex items-center justify-center">
                   <ImageWithFallback
-                    src={movie.posterUrl}
-                    alt={movie.title}
+                    src={fullMovie.posterUrl}
+                    alt={fullMovie.title}
                     className="max-w-full max-h-[95vh] object-contain rounded-lg"
                   />
                 </div>
@@ -124,26 +139,26 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
             <div className="flex-1 min-w-0 flex flex-col gap-5">
               {/* Title + meta */}
               <div>
-                <h1 className="text-4xl font-semibold leading-tight mb-3">{movie.title}</h1>
+                <h1 className="text-4xl font-semibold leading-tight mb-3">{fullMovie.title}</h1>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-                  <span className="text-foreground font-medium">{movie.year}</span>
+                  <span className="text-foreground font-medium">{fullMovie.year}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
-                    {movie.duration} min
+                    {fullMovie.duration} min
                   </span>
                   <span>•</span>
                   <span className="px-2 py-0.5 bg-secondary border border-border rounded text-xs font-medium text-foreground">
-                    {movie.rating}
+                    {fullMovie.rating}
                   </span>
                   <span>•</span>
                   <span className="flex items-center gap-1.5">
                     <Eye className="w-3.5 h-3.5" />
-                    {movie.views} views
+                    {fullMovie.views} views
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Directed by <span className="text-foreground">{movie.director}</span>
+                  Directed by <span className="text-foreground">{fullMovie.director}</span>
                 </p>
               </div>
 
@@ -164,7 +179,7 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
                     <div className="flex items-center gap-3">
                       <RottenTomatoesLogo className="w-14 h-14 flex-shrink-0" />
                       <div>
-                        <div className={`text-3xl font-semibold ${rtColor.text}`}>{movie.ratings.rottenTomatoes}%</div>
+                        <div className={`text-3xl font-semibold ${rtColor.text}`}>{fullMovie.ratings.rottenTomatoes}%</div>
                         <div className="text-xs text-muted-foreground">Tomatometer</div>
                       </div>
                     </div>
@@ -173,7 +188,7 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
                     <div className="flex items-center gap-3">
                       <MetacriticLogo className="w-12 h-12 flex-shrink-0" />
                       <div>
-                        <div className={`text-3xl font-semibold ${metacriticColor.text}`}>{movie.ratings.metacritic}</div>
+                        <div className={`text-3xl font-semibold ${metacriticColor.text}`}>{fullMovie.ratings.metacritic}</div>
                         <div className="text-xs text-muted-foreground">Metascore</div>
                       </div>
                     </div>
@@ -183,7 +198,7 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
 
               {/* Genre tags */}
               <div className="flex flex-wrap gap-2">
-                {movie.genre.map((g) => (
+                {fullMovie.genre.map((g) => (
                   <span key={g} className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm">
                     {g}
                   </span>
@@ -192,7 +207,7 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
 
               {/* Summary preview */}
               <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">
-                {movie.summary}
+                {fullMovie.summary}
               </p>
             </div>
           </div>
@@ -206,13 +221,13 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
           <div className="space-y-6">
             <div className="bg-card rounded-xl border border-border p-6">
               <h2 className="text-lg font-medium mb-3">Overview</h2>
-              <p className="text-muted-foreground leading-relaxed">{movie.summary}</p>
+              <p className="text-muted-foreground leading-relaxed">{fullMovie.summary}</p>
             </div>
 
             <div className="bg-card rounded-xl border border-border p-6">
               <h2 className="text-lg font-medium mb-3">Cast</h2>
               <div className="flex flex-wrap gap-2">
-                {movie.cast.map((actor) => (
+                {fullMovie.cast.map((actor) => (
                   <span key={actor} className="px-3 py-1.5 bg-secondary rounded-lg text-sm">
                     {actor}
                   </span>
@@ -228,26 +243,26 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
               <dl className="space-y-3 text-sm">
                 <div>
                   <dt className="text-muted-foreground mb-0.5">Director</dt>
-                  <dd className="text-foreground">{movie.director}</dd>
+                  <dd className="text-foreground">{fullMovie.director}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground mb-0.5">Language</dt>
                   <dd className="text-foreground flex items-center gap-1.5">
                     <Globe className="w-3.5 h-3.5" />
-                    {movie.language}
+                    {fullMovie.language}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground mb-0.5">Country</dt>
-                  <dd className="text-foreground">{movie.country}</dd>
+                  <dd className="text-foreground">{fullMovie.country}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground mb-0.5">Runtime</dt>
-                  <dd className="text-foreground">{movie.duration} min</dd>
+                  <dd className="text-foreground">{fullMovie.duration} min</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground mb-0.5">Rating</dt>
-                  <dd className="text-foreground">{movie.rating}</dd>
+                  <dd className="text-foreground">{fullMovie.rating}</dd>
                 </div>
               </dl>
             </div>

@@ -5,7 +5,13 @@ import { SearchResultsScreen } from './views/screens/SearchResultsScreen';
 import { MovieDetailsScreen } from './views/screens/MovieDetailsScreen';
 import { FilterBar, FilterOptions } from './views/components/FilterBar';
 import { Movie, EnabledRatings, Screen } from './models/movie';
-import { mockMovies, availableGenres, availableYears } from './models/mockMovies';
+import { loadTrendingMovies } from "@/api/movies";
+import {getGenres} from "@/api/tmdb";
+
+
+
+
+
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -23,6 +29,11 @@ export default function App() {
     rottenTomatoes: true,
     metacritic: true
   });
+  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
+  const [availableGenres, setAvailableGenres] = useState<string[]>([]);
+  const [genreMap, setGenreMap] = useState<Record<number, string>>({});
+
+
 
   // Load enabled ratings from localStorage on mount
   useEffect(() => {
@@ -48,6 +59,50 @@ export default function App() {
       setCurrentScreen('search');
     }
   };
+
+  useEffect(() => {
+    async function loadTrending() {
+      const movies = await loadTrendingMovies();
+
+      // Convert genre IDs → names using genreMap
+      const moviesWithGenres = movies.map(m => ({
+        ...m,
+        genre: m.genre.map(id => genreMap[Number(id)] || "Unknown")
+      }));
+
+      setTrendingMovies(moviesWithGenres);
+    }
+
+    loadTrending();
+  }, [genreMap]);
+
+  useEffect(() => {
+    async function loadGenres() {
+      const data = await getGenres();
+
+      const map: Record<number, string> = {};
+      data.genres.forEach((g: any) => {
+        map[g.id] = g.name;
+      });
+
+      setGenreMap(map);
+      setAvailableGenres(data.genres.map((g: any) => g.name));
+    }
+
+    loadGenres();
+  }, []);
+
+
+  const availableYears = useMemo(() => {
+    const years = trendingMovies
+        .map(m => m.year)
+        .filter(y => y > 0);
+
+    return Array.from(new Set(years)).sort((a, b) => b - a);
+  }, [trendingMovies]);
+
+
+
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -110,8 +165,8 @@ export default function App() {
           comparison = a.title.localeCompare(b.title);
           break;
         case 'views':
-          const aViews = parseFloat(a.views.replace('M', ''));
-          const bViews = parseFloat(b.views.replace('M', ''));
+          const aViews = parseFloat(a.views?.replace('M', '') || "0");
+          const bViews = parseFloat(b.views?.replace('M', '') || "0");
           comparison = aViews - bViews;
           break;
       }
@@ -122,22 +177,22 @@ export default function App() {
     return filtered;
   };
 
-  // Filter movies for home screen (exclude The Dark Knight for variety)
+  // Filter trending movies for home screen
   const homeMovies = useMemo(
-    () => applyFilters(mockMovies.filter(movie => movie.id !== 5)),
-    [filters]
+    () => applyFilters(trendingMovies),
+    [trendingMovies, filters]
   );
 
   // Filter movies based on search
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase();
-    const matches = mockMovies.filter(movie =>
-      movie.title.toLowerCase().includes(query) ||
-      movie.director.toLowerCase().includes(query)
+    const matches = trendingMovies.filter(movie =>
+        movie.title.toLowerCase().includes(query) ||
+        movie.director.toLowerCase().includes(query)
     );
     return applyFilters(matches);
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, trendingMovies]);
 
   // Screen routing
   if (currentScreen === 'details' && selectedMovie) {
