@@ -15,7 +15,8 @@ export const mockMovies: Movie[] = [
     language: 'English',
     country: 'United States',
     ratings: { imdb: 7.2, rottenTomatoes: 85, metacritic: 72 },
-    posterUrl: 'https://cdn.kinocheck.com/i/8subb0pkbp.jpg'
+    posterUrl: 'https://cdn.kinocheck.com/i/8subb0pkbp.jpg',
+    imdbId: ""
   },
   {
     id: 2,
@@ -31,7 +32,8 @@ export const mockMovies: Movie[] = [
     language: 'English',
     country: 'United States',
     ratings: { imdb: 7.3, rottenTomatoes: 88, metacritic: 75 },
-    posterUrl: 'https://miro.medium.com/1*tlsRIqYthU7YGMad070sOw.jpeg'
+    posterUrl: 'https://miro.medium.com/1*tlsRIqYthU7YGMad070sOw.jpeg',
+    imdbId: ""
   },
   {
     id: 3,
@@ -47,7 +49,8 @@ export const mockMovies: Movie[] = [
     language: 'English',
     country: 'United States',
     ratings: { imdb: 7.0, rottenTomatoes: 78, metacritic: 65 },
-    posterUrl: 'https://images.herzindagi.info/her-zindagi-english/images/2025/08/22/article/image/Main-1755857952806.webp'
+    posterUrl: 'https://images.herzindagi.info/her-zindagi-english/images/2025/08/22/article/image/Main-1755857952806.webp',
+    imdbId: ""
   },
   {
     id: 4,
@@ -63,7 +66,8 @@ export const mockMovies: Movie[] = [
     language: 'English',
     country: 'United States',
     ratings: { imdb: 7.8, rottenTomatoes: 88, metacritic: 76 },
-    posterUrl: 'https://thecompanion.in/wp-content/uploads/2025/07/superman-2025.jpg'
+    posterUrl: 'https://thecompanion.in/wp-content/uploads/2025/07/superman-2025.jpg',
+    imdbId: ""
   },
   {
     id: 5,
@@ -79,7 +83,8 @@ export const mockMovies: Movie[] = [
     language: 'English',
     country: 'United States',
     ratings: { imdb: 9.0, rottenTomatoes: 94, metacritic: 84 },
-    posterUrl: 'https://static.posters.cz/image/750webp/198201.webp'
+    posterUrl: 'https://static.posters.cz/image/750webp/198201.webp',
+    imdbId: ""
   },
   {
     id: 6,
@@ -95,7 +100,8 @@ export const mockMovies: Movie[] = [
     language: 'English',
     country: 'United States',
     ratings: { imdb: 8.8, rottenTomatoes: 87, metacritic: 74 },
-    posterUrl: 'https://m.media-amazon.com/images/I/71thFiIUSpL._AC_UF894,1000_QL80_.jpg'
+    posterUrl: 'https://m.media-amazon.com/images/I/71thFiIUSpL._AC_UF894,1000_QL80_.jpg',
+    imdbId: ""
   }
 ];
 
