@@ -33,6 +33,7 @@ function loadCachedTrending(): Movie[] | null {
     return loadCache<Movie[]>(TRENDING_CACHE_KEY);
 }
 
+
 function saveTrendingCache(movies: Movie[]) {
     saveCache(TRENDING_CACHE_KEY, movies);
     updateCacheTimestamp(TRENDING_CACHE_TIME_KEY);
