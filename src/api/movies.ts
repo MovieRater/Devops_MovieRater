@@ -19,6 +19,68 @@ import {
 
 
 // -------------------------------------------------------------
+// UNIFIED MOVIE PIPELINE (TMDB + OMDB + RETRY)
+// -------------------------------------------------------------
+
+export async function buildMovie(movie: Movie): Promise<Movie> {
+    let retryNeeded = false;
+
+    // 1. TMDB enrichment (details + credits + external IDs)
+    let details, credits, externalIds;
+
+    try {
+        [details, credits] = await Promise.all([
+            getMovieDetails(movie.id),
+            getMovieCredits(movie.id)
+        ]);
+
+        externalIds = await safeGetExternalIds(movie.id);
+
+        if (externalIds.retryNeeded) {
+            retryNeeded = true;
+        }
+    } catch (err) {
+        console.warn(`TMDB failed for movie ${movie.id}:`, err);
+        retryNeeded = true;
+
+        // Return partial movie, retry later
+        return { ...movie, retryNeeded };
+    }
+
+    const director = credits.crew?.find((c: any) => c.job === "Director")?.name || "Unknown";
+    const cast = credits.cast?.slice(0, 10).map((c: any) => c.name) || [];
+
+    let enriched: Movie = {
+        ...movie,
+        director,
+        duration: details.runtime || 0,
+        summary: details.overview || "",
+        cast,
+        language: details.original_language || "",
+        country: details.origin_country?.[0] || "",
+        imdbId: externalIds.imdb_id || null,
+        retryNeeded
+    };
+
+    // 2. OMDB enrichment (ratings)
+    if (!enriched.imdbId) {
+        // No IMDB ID → cannot fetch OMDB → retry later
+        return enriched;
+    }
+
+    try {
+        const ratings = await getOmdbRatingsCached(enriched.imdbId);
+        enriched = { ...enriched, ratings };
+    } catch (err) {
+        console.warn(`OMDB failed for movie ${movie.id}:`, err);
+        enriched.retryNeeded = true;
+    }
+
+    return enriched;
+}
+
+
+// -------------------------------------------------------------
 // TRENDING CACHE CONFIG
 // -------------------------------------------------------------
 
@@ -39,77 +101,13 @@ function saveTrendingCache(movies: Movie[]) {
     updateCacheTimestamp(TRENDING_CACHE_TIME_KEY);
 }
 
-async function enrichMovieWithRetry(movie: Movie): Promise<Movie> {
-    // Fetch TMDB details + credits
-    const [details, credits] = await Promise.all([
-        getMovieDetails(movie.id),
-        getMovieCredits(movie.id)
-    ]);
-
-    // Fetch external IDs with retry detection
-    const externalIds = await safeGetExternalIds(movie.id);
-
-    const director = credits.crew?.find((c: any) => c.job === "Director");
-    const cast = credits.cast?.slice(0, 10).map((c: any) => c.name) || [];
-
-    return {
-        ...movie,
-        director: director?.name || "Unknown",
-        duration: details.runtime || 0,
-        summary: details.overview || "",
-        cast,
-        language: details.original_language || "",
-        country: details.origin_country?.[0] || "",
-        imdbId: externalIds.imdb_id || null,
-        retryNeeded: externalIds.retryNeeded || false
-    };
-}
-
-
 // -------------------------------------------------------------
-// MERGE TMDB + OMDB (INTERNAL ONLY)
-// -------------------------------------------------------------
-
-async function mergeMovieData(movie: Movie): Promise<Movie> {
-    if (!movie.imdbId) {
-        return movie;
-    }
-
-    try {
-        const ratings = await getOmdbRatingsCached(movie.imdbId);
-        return { ...movie, ratings };
-    } catch (err) {
-        console.error("OMDB merge failed:", err);
-        return movie;
-    }
-}
-
-// -------------------------------------------------------------
-// SINGLE MOVIE PIPELINE (FOR MOVIE DETAILS SCREEN)
+// SINGLE MOVIE PIPELINE (DETAILS SCREEN)
 // -------------------------------------------------------------
 
 export async function loadMovieDetails(id: number): Promise<Movie> {
-    const [details, credits, externalIds] = await Promise.all([
-        getMovieDetails(id),
-        getMovieCredits(id),
-        safeGetExternalIds(id)
-    ]);
-
-    const base = mapTmdbMovie(details);
-
-    const enriched = {
-        ...base,
-        director: credits.crew?.find((c: any) => c.job === "Director")?.name || "Unknown",
-        duration: details.runtime || 0,
-        summary: details.overview || "",
-        cast: credits.cast?.slice(0, 10).map((c: any) => c.name) || [],
-        language: details.original_language || "",
-        country: details.origin_country?.[0] || "",
-        imdbId: externalIds.imdb_id || null,
-        retryNeeded: externalIds.retryNeeded || false
-    };
-
-    return await mergeMovieData(enriched);
+    const base = { id } as Movie;
+    return await buildMovie(base);
 }
 
 
@@ -122,28 +120,18 @@ export async function loadTrendingMovies(): Promise<Movie[]> {
     const cached = loadCachedTrending();
 
     if (cached) {
-        // Retry only incomplete movies
         const retryMovies = cached.filter(m => m.retryNeeded);
 
         if (retryMovies.length > 0) {
             console.log("Retrying incomplete movies:", retryMovies.length);
 
             for (const movie of retryMovies) {
-                // Avoid rate limit
-                await new Promise(r => setTimeout(r, 500));
+                await new Promise(r => setTimeout(r, 500)); // avoid rate limit
 
-                const externalIds = await safeGetExternalIds(movie.id);
+                const updated = await buildMovie(movie);
 
-                if (externalIds.imdb_id) {
-                    const updated = await mergeMovieData({
-                        ...movie,
-                        imdbId: externalIds.imdb_id,
-                        retryNeeded: false
-                    });
-
-                    const index = cached.findIndex(m => m.id === movie.id);
-                    cached[index] = updated;
-                }
+                const index = cached.findIndex(m => m.id === movie.id);
+                cached[index] = updated;
             }
 
             saveTrendingCache(cached);
@@ -158,14 +146,11 @@ export async function loadTrendingMovies(): Promise<Movie[]> {
     // 3. Map TMDB → Movie
     const mapped = tmdbTrending.results.map(mapTmdbMovie);
 
-    // 4. Enrich TMDB details + external IDs (with retry detection)
-    const enriched = await Promise.all(mapped.map(enrichMovieWithRetry));
+    // 4. Build complete movies (TMDB + OMDB)
+    const finalMovies = await Promise.all(mapped.map(buildMovie));
 
-    // 5. Merge OMDB ratings
-    const merged = await Promise.all(enriched.map(mergeMovieData));
+    // 5. Cache final movies
+    saveTrendingCache(finalMovies);
 
-    // 6. Cache final merged movies
-    saveTrendingCache(merged);
-
-    return merged;
+    return finalMovies;
 }

@@ -56,6 +56,14 @@ export async function getExternalIds(id: number) {
     return tmdbFetch(`movie/${id}/external_ids`);
 }
 
+export async function searchMovies(query: string) {
+    return tmdbFetch(`search/movie?query=${encodeURIComponent(query)}`);
+}
+
+export async function getGenres() {
+    return tmdbFetch("genre/movie/list");
+}
+
 // -------------------------------------------------------------
 // SAFE WRAPPER FOR EXTERNAL IDS (RETRY DETECTION)
 // -------------------------------------------------------------
@@ -73,14 +81,6 @@ export async function safeGetExternalIds(id: number) {
         // Other errors should still throw
         throw err;
     }
-}
-
-export async function searchMovies(query: string) {
-    return tmdbFetch(`search/movie?query=${encodeURIComponent(query)}`);
-}
-
-export async function getGenres() {
-    return tmdbFetch("genre/movie/list");
 }
 
 // -------------------------------------------------------------
@@ -116,31 +116,5 @@ export function mapTmdbMovie(tmdb: any): Movie {
             : "",
 
         genre: tmdb.genre_ids?.map((id: number) => id.toString()) || [],
-    };
-}
-
-// -------------------------------------------------------------
-// ENRICHMENT (TMDB DETAILS + CREDITS)
-// -------------------------------------------------------------
-
-export async function enrichTmdbMovie(movie: Movie): Promise<Movie> {
-    const [details, credits, externalIds] = await Promise.all([
-        getMovieDetails(movie.id),
-        getMovieCredits(movie.id),
-        getExternalIds(movie.id),
-    ]);
-
-    const director = credits.crew?.find((c: any) => c.job === "Director");
-    const cast = credits.cast?.slice(0, 10).map((c: any) => c.name) || [];
-
-    return {
-        ...movie,
-        director: director?.name || "Unknown",
-        duration: details.runtime || 0,
-        summary: details.overview || "",
-        cast,
-        language: details.original_language || "",
-        country: details.origin_country?.[0] || "",
-        imdbId: externalIds.imdb_id || null,
     };
 }
