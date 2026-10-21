@@ -32,8 +32,11 @@ test('release record binds the tested image bytes and exact configuration to its
 });
 
 test('an arbitrary repository, image or revision is rejected before any API request', () => {
-  for (const env of [{ GITHUB_REPOSITORY: 'evil/repo' }, { RELEASE_REVISION: 'main' },
-    { APPROVED_IMAGE: 'ghcr.io/evil/repo@sha256:' + 'a'.repeat(64) }, { PUBLISH_RUN_ID: 'unsafe;input' }]) {
+  for (const env of [{ GITHUB_REPOSITORY: 'evil/repo' },
+    { GITHUB_REPOSITORY: 'Ozan0062/Devops_MovieRater' }, { RELEASE_REVISION: 'main' },
+    { APPROVED_IMAGE: 'ghcr.io/evil/repo@sha256:' + 'a'.repeat(64) },
+    { APPROVED_IMAGE: 'ghcr.io/ozan0062/devops_movierater@sha256:' + 'a'.repeat(64) },
+    { PUBLISH_RUN_ID: 'unsafe;input' }]) {
     const f = fixture();
     try {
       rejected(f.run('./release.mjs', 'resolve', env));
@@ -53,7 +56,7 @@ test('failed publishing jobs, missing approvals and malformed records cannot dep
 
 test('approval revision, policy and immutable digest mismatches fail closed', () => {
   for (const override of [{ revision: 'c'.repeat(40) }, { policy: 'advisory' },
-    { image_ref: 'ghcr.io/ozan0062/devops_movierater@sha256:' + 'c'.repeat(64) }]) {
+    { image_ref: 'ghcr.io/movierater/devops_movierater@sha256:' + 'c'.repeat(64) }]) {
     const initial = fixture();
     const changed = { ...initial.approval, ...override };
     initial.cleanup();

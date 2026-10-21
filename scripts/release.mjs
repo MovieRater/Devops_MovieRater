@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 // Release records connect a successful publishing job to one exact GHCR digest.
-const repository = 'Ozan0062/Devops_MovieRater';
+const repository = 'MovieRater/Devops_MovieRater';
 const imageName = `ghcr.io/${repository.toLowerCase()}`;
 const bundleFiles = ['docker-compose.prod.yml', 'docker-compose.https.yml', 'Caddyfile', 'scripts/deploy.sh'];
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');

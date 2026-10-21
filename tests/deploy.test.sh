@@ -7,9 +7,9 @@ repo="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 suite="$(mktemp -d)"
 trap 'rm -rf -- "$suite"' EXIT
 mkdir "$suite/bin"
-export TEST_IMAGE_A="ghcr.io/ozan0062/devops_movierater@sha256:$(printf 'a%.0s' {1..64})"
-export TEST_IMAGE_B="ghcr.io/ozan0062/devops_movierater@sha256:$(printf 'b%.0s' {1..64})"
-export TEST_IMAGE_C="ghcr.io/ozan0062/devops_movierater@sha256:$(printf 'c%.0s' {1..64})"
+export TEST_IMAGE_A="ghcr.io/movierater/devops_movierater@sha256:$(printf 'a%.0s' {1..64})"
+export TEST_IMAGE_B="ghcr.io/movierater/devops_movierater@sha256:$(printf 'b%.0s' {1..64})"
+export TEST_IMAGE_C="ghcr.io/movierater/devops_movierater@sha256:$(printf 'c%.0s' {1..64})"
 export TEST_REV_A="$(printf '1%.0s' {1..40})"
 export TEST_REV_B="$(printf '2%.0s' {1..40})"
 export TEST_REV_C="$(printf '3%.0s' {1..40})"
@@ -269,6 +269,8 @@ pass 'backend secrets are rejected without exposing their values'
 
 new_case
 run fail deploy 'ghcr.io/attacker/app@sha256:abc' "$TEST_REV_A"
+[[ ! -s "$case_root/trace" ]]
+run fail deploy "ghcr.io/ozan0062/devops_movierater@sha256:${TEST_IMAGE_A##*@sha256:}" "$TEST_REV_A"
 [[ ! -s "$case_root/trace" ]]
 run fail deploy "$TEST_IMAGE_A;touch pwned" "$TEST_REV_A"
 [[ ! -e "$case_root/pwned" ]]

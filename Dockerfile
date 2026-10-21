@@ -15,9 +15,13 @@ RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e AS runtime
 
-# Patch the PCRE2 issue found by the image scan until the upstream digest includes it.
+# Apply verified Alpine security fixes until the pinned base image includes them.
 USER root
-RUN apk add --no-cache pcre2=10.49-r0
+RUN apk add --no-cache --upgrade \
+    pcre2=10.49-r0 \
+    libexpat=2.9.0-r0 \
+    libx11=1.8.14-r0 \
+    tiff=4.7.2-r0
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html

@@ -12,7 +12,7 @@ permissions:
 jobs:
   publish:
     name: Test, scan and publish image
-    if: github.repository == 'Ozan0062/Devops_MovieRater' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: github.repository == 'MovieRater/Devops_MovieRater' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     # Only publishing holds this lock; waiting for production approval must not

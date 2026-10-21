@@ -7,11 +7,11 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const revision = 'a'.repeat(40);
-export const repository = 'Ozan0062/Devops_MovieRater';
+export const repository = 'MovieRater/Devops_MovieRater';
 export const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const configDigest = `sha256:${'b'.repeat(64)}`;
 const manifest = JSON.stringify({ schemaVersion: 2, config: { digest: configDigest }, layers: [] });
-export const image = `ghcr.io/ozan0062/devops_movierater@sha256:${hash(manifest)}`;
+export const image = `ghcr.io/movierater/devops_movierater@sha256:${hash(manifest)}`;
 const files = { 'docker-compose.prod.yml': 'fixture production\n', 'docker-compose.https.yml': 'fixture HTTPS\n', Caddyfile: 'fixture proxy\n', 'scripts/deploy.sh': '#!/bin/sh\nexit 0\n' };
 
 // Each test runs the real CLI in a child process. Only external APIs/processes

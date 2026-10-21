@@ -35,7 +35,7 @@ permissions:
 jobs:
   production:
     name: Deploy verified digest
-    if: github.repository == 'Ozan0062/Devops_MovieRater' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    if: github.repository == 'MovieRater/Devops_MovieRater' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: production

@@ -20,7 +20,7 @@ state_temp=''
 
 error() { printf 'ERROR: %s\n' "$*" >&2; }
 die() { error "$*"; exit 1; }
-valid_image() { [[ "$1" =~ ^ghcr\.io/ozan0062/devops_movierater@sha256:[a-f0-9]{64}$ ]]; }
+valid_image() { [[ "$1" =~ ^ghcr\.io/movierater/devops_movierater@sha256:[a-f0-9]{64}$ ]]; }
 valid_revision() { [[ "$1" =~ ^[a-f0-9]{40}$ ]]; }
 
 private_file() {

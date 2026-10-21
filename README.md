@@ -86,7 +86,7 @@ app-build, Docker-build, containerkontrol og sikkerhedsscanning. Fejl stopper
 pipelinen. Et push til en branch med en åben PR udløser både push- og PR-kontrollen.
 
 Efter push/merge til `main` eller versionstags publiceres det testede image til
-`ghcr.io/ozan0062/devops_movierater`. Commit-tags og versionsmærker gør det muligt
+`ghcr.io/movierater/devops_movierater`. Commit-tags og versionsmærker gør det muligt
 at finde en bestemt version; deployment bruger den præcise image-digest.
 
 Trivy stopper release ved alle CRITICAL-fund og HIGH-fund med en rettelse.
@@ -150,5 +150,5 @@ workflow-artifakt; ved browserfejl gemmes også HTML-rapport og testresultater.
 
 Opdatér base-image-versioner og digests via en PR. Hold Node-versionen ens i
 Dockerfilerne og `.nvmrc`, og gennemgå CI-kontrollerne og Trivy-rapporten.
-Den midlertidige `pcre2`-pin i Dockerfile kan fjernes, når base-imaget
-indeholder sikkerhedsrettelsen.
+De midlertidige Alpine-pins i Dockerfile kan fjernes, når det fastlåste
+base-image indeholder de samme sikkerhedsrettelser.

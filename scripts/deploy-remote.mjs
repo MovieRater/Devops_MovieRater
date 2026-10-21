@@ -6,7 +6,7 @@ import { basename, join, posix, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-const imagePattern = /^ghcr\.io\/ozan0062\/devops_movierater@sha256:[a-f0-9]{64}$/;
+const imagePattern = /^ghcr\.io\/movierater\/devops_movierater@sha256:[a-f0-9]{64}$/;
 const revisionPattern = /^[a-f0-9]{40}$/;
 const bundleFiles = ['docker-compose.prod.yml', 'docker-compose.https.yml', 'Caddyfile', 'scripts/deploy.sh'];
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');

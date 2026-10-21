@@ -11,7 +11,7 @@ Produktionsserveren er endnu ikke tilsluttet. Lad `DEPLOY_ENABLED` være tom ell
   deployment-tests, Playwright i Chromium, produktionsbuild, Docker-build,
   containerkontrol og sikkerhedsscanning. Push-tags håndteres af publish-workflowet.
 - Push/merge til `main` og versionstags bygger og tester et release-image og
-  publicerer det til `ghcr.io/ozan0062/devops_movierater`.
+  publicerer det til `ghcr.io/movierater/devops_movierater`.
 - Det samme image testes før og efter publicering. Der bygges ikke et nyt image
   mellem testen og publiceringen.
 - Efter en godkendt main-release kan deployment hente den præcise image-digest,
@@ -41,7 +41,7 @@ publicerede commit-images genbruges frem for at blive overskrevet.
 Deployment bruger altid en reference som:
 
 ```text
-ghcr.io/ozan0062/devops_movierater@sha256:<64-hex-tegn>
+ghcr.io/movierater/devops_movierater@sha256:<64-hex-tegn>
 ```
 
 Et flydende tag som `latest` bruges ikke til automatiseret deployment.
@@ -206,7 +206,7 @@ GitHub Actions. Udpak konfigurationen i `/opt/movierater/releases/<commit-id>/`.
 Brug image-digest fra artifaktets `release.json`:
 
 ```sh
-MOVIERATER_ROOT=/opt/movierater bash /opt/movierater/releases/<commit-id>/scripts/deploy.sh deploy ghcr.io/ozan0062/devops_movierater@sha256:<digest> <commit-id>
+MOVIERATER_ROOT=/opt/movierater bash /opt/movierater/releases/<commit-id>/scripts/deploy.sh deploy ghcr.io/movierater/devops_movierater@sha256:<digest> <commit-id>
 MOVIERATER_ROOT=/opt/movierater bash /opt/movierater/releases/<commit-id>/scripts/deploy.sh rollback
 ```
 
@@ -310,6 +310,24 @@ dage for publish-kørsler. HTML-rapport og testresultater fra fejlede browser-te
 gemmes i 7 dage. Testserveren overskriver Supabase-variablerne med syntetiske
 frontendværdier, så lokal `.env` og produktionskonfiguration ikke bruges.
 Nye testværktøjer skal tilføjes eksplicit til pipelinekonfigurationen.
+
+## Sikkerhedsrettelser verificeret 21. oktober 2026
+
+- Vite er fastlåst til `6.4.4`. Dockerfilen opdaterer `libexpat` til `2.9.0-r0`,
+  `libx11` til `1.8.14-r0` og `tiff` til `4.7.2-r0`; den eksisterende PCRE2-rettelse bevares.
+- De fire HIGH-fund fra GitHub-kørsel `39609593385` er rettet. Trivy `0.69.3`
+  med opdateret database fandt 0 HIGH/CRITICAL i både runtime-imaget og npm-lockfilen,
+  inklusive udviklingsafhængigheder. Den eksisterende policy-kontrol bestod uændret.
+- Workflows, releasekontrol, imagebegrænsninger, tests og dokumentation bruger
+  `MovieRater/Devops_MovieRater` og `ghcr.io/movierater/devops_movierater`.
+  Det gamle repository og image afvises eksplicit af regressionstestene.
+- Lint, TypeScript-kontrol, 16 unit-tests, 20 pipeline-tests, Playwright-testen,
+  produktionsbuild og Docker-build bestod. Alle 27 Linux-deployment-scenarier bestod.
+- Det rettede Docker-image bestod containerkontrollen med healthy-status, UID 101,
+  read-only filesystem, begrænsede capabilities, HTTP, assets, SPA-fallback og headers.
+- Scanningsrapporter fra kontrollen gemmes lokalt i `.cache/security-20261021/`
+  og er udelukket fra Git og Docker-build. Den opdaterede kode er endnu ikke kørt på GitHub;
+  rigtig GHCR-publicering og serverdeployment er fortsat ikke verificeret.
 
 ## Samling med main verificeret 21. oktober 2026
 
