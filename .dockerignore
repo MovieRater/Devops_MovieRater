@@ -15,5 +15,8 @@ dist-ssr
 *.log
 *.tsbuildinfo
 coverage
+.cache
+.deploy-state
+docs
 README.md
 .DS_Store

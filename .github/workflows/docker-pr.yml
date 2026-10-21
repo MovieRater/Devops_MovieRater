@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      # These are public frontend settings. Fork PRs need no secrets or Supabase access.
-      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://example.supabase.co' }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_ci_placeholder' }}
+      # CI uses isolated configuration and mocks; it never needs the production database.
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
       DOCKER_SMOKE_CONTAINER: movierater-pr-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout
@@ -37,11 +37,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint if configured
-        run: npm run lint --if-present
+      - name: Lint
+        run: npm run lint
 
-      - name: Run tests if configured
-        run: npm test --if-present
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Application and pipeline tests
+        run: npm test
+
+      - name: Deployment integration tests
+        run: npm run test:integration
 
       - name: Build application
         run: npm run build
@@ -65,36 +71,42 @@ jobs:
       - name: Test container and HTTP endpoints
         run: node scripts/docker-smoke.mjs "movierater-ci:$GITHUB_SHA"
 
-      - name: Scan image vulnerabilities (advisory)
+      - name: Scan image vulnerabilities
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           version: v0.69.3
           scan-type: image
           image-ref: movierater-ci:${{ github.sha }}
           scanners: vuln
-          format: table
-          output: trivy-image.txt
+          format: json
+          output: trivy-image.json
           severity: HIGH,CRITICAL
           exit-code: '0'
 
-      - name: Scan npm dependencies (advisory)
+      - name: Scan npm dependencies
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: 'true'
         with:
           skip-setup-trivy: true
           scan-type: fs
           scan-ref: .
+          skip-dirs: node_modules,dist,.git,.cache,.ci-local-tests
           scanners: vuln
-          format: table
-          output: trivy-dependencies.txt
+          format: json
+          output: trivy-dependencies.json
           severity: HIGH,CRITICAL
           exit-code: '0'
+
+      - name: Enforce vulnerability policy
+        run: node scripts/check-vulnerabilities.mjs trivy-image.json trivy-dependencies.json
 
       - name: Upload vulnerability reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: trivy-pr-${{ github.run_id }}
-          path: trivy-*.txt
+          path: trivy-*.json
           if-no-files-found: warn
           retention-days: 14
 

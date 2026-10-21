@@ -9,21 +9,19 @@ on:
 permissions:
   contents: read
 
-# Serialize publication, including multiple pending release tags, to avoid races
-# when main and a version tag point to the same commit.
-# queue:max is supported on GitHub.com; actionlint 1.7.12 has not added it yet.
-# https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
-concurrency:
-  group: movierater-publish
-  queue: max
-  cancel-in-progress: false
-
 jobs:
   publish:
     name: Test, scan and publish image
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    if: github.repository == 'Ozan0062/Devops_MovieRater' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    # Only publishing holds this lock; waiting for production approval must not
+    # block later image builds. queue:max preserves pending release tags.
+    # https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
+    concurrency:
+      group: movierater-publish
+      queue: max
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write
@@ -31,6 +29,10 @@ jobs:
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
       DOCKER_SMOKE_CONTAINER: movierater-publish-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      image_ref: ${{ steps.verify.outputs.image_ref }}
+      revision: ${{ github.sha }}
+      publish_run_id: ${{ github.run_id }}
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -55,11 +57,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint if configured
-        run: npm run lint --if-present
+      - name: Lint
+        run: npm run lint
 
-      - name: Run tests if configured
-        run: npm test --if-present
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Application and pipeline tests
+        run: npm test
+
+      - name: Deployment integration tests
+        run: npm run test:integration
 
       - name: Build application
         run: npm run build
@@ -156,36 +164,42 @@ jobs:
       - name: Test the image that will be published
         run: node scripts/docker-smoke.mjs "movierater-ci:$GITHUB_SHA"
 
-      - name: Scan image vulnerabilities (advisory)
+      - name: Scan image vulnerabilities
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           version: v0.69.3
           scan-type: image
           image-ref: movierater-ci:${{ github.sha }}
           scanners: vuln
-          format: table
-          output: trivy-image.txt
+          format: json
+          output: trivy-image.json
           severity: HIGH,CRITICAL
           exit-code: '0'
 
-      - name: Scan npm dependencies (advisory)
+      - name: Scan npm dependencies
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: 'true'
         with:
           skip-setup-trivy: true
           scan-type: fs
           scan-ref: .
+          skip-dirs: node_modules,dist,.git,.cache,.ci-local-tests
           scanners: vuln
-          format: table
-          output: trivy-dependencies.txt
+          format: json
+          output: trivy-dependencies.json
           severity: HIGH,CRITICAL
           exit-code: '0'
+
+      - name: Enforce vulnerability policy
+        run: node scripts/check-vulnerabilities.mjs trivy-image.json trivy-dependencies.json
 
       - name: Upload vulnerability reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: trivy-publish-${{ github.run_id }}
-          path: trivy-*.txt
+          path: trivy-*.json
           if-no-files-found: warn
           retention-days: 30
 
@@ -235,9 +249,48 @@ jobs:
             docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "movierater-ci:$GITHUB_SHA"
             echo '```'
             echo 'The immutable commit image was tested with the production security settings.'
-            echo 'HIGH/CRITICAL vulnerability findings are advisory; see the Trivy report artifact.'
+            echo 'All CRITICAL and fixable HIGH findings block publication; see the Trivy report artifact.'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify published digest and create approved release record
+        id: verify
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/release.mjs record
+
+      - name: Smoke test the image pulled from GHCR by digest
+        env:
+          APPROVED_IMAGE: ${{ steps.verify.outputs.image_ref }}
+        run: node scripts/docker-smoke.mjs "$APPROVED_IMAGE"
+
+      - name: Upload approved release record
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: movierater-release-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            release.json
+            docker-compose.prod.yml
+            docker-compose.https.yml
+            Caddyfile
+            scripts/deploy.sh
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Clean up container
         if: always()
         run: docker rm --force "$DOCKER_SMOKE_CONTAINER" 2>/dev/null || true
+
+  deploy:
+    name: Deploy approved release
+    needs: publish
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    uses: ./.github/workflows/deploy.yml
+    with:
+      image_ref: ${{ needs.publish.outputs.image_ref }}
+      revision: ${{ needs.publish.outputs.revision }}
+      publish_run_id: ${{ needs.publish.outputs.publish_run_id }}
+      automatic: true
