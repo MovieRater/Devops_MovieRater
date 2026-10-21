@@ -80,8 +80,10 @@ Opret disse repository variables på GitHub under
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `DEPLOY_ENABLED=false`, indtil produktionsserveren er klar.
 
-En pull request til `main` kører lint, typekontrol, tests, app-build, Docker-build,
-containerkontrol og sikkerhedsscanning. Kritiske fejl stopper pipelinen.
+Pull requests og push til andre branches end `main` kører lint, typekontrol,
+app-tests med coverage, Node-tests, deployment-tests, Playwright i Chromium,
+app-build, Docker-build, containerkontrol og sikkerhedsscanning. Fejl stopper
+pipelinen. Et push til en branch med en åben PR udløser både push- og PR-kontrollen.
 
 Efter push/merge til `main` eller versionstags publiceres det testede image til
 `ghcr.io/ozan0062/devops_movierater`. Commit-tags og versionsmærker gør det muligt
@@ -124,12 +126,25 @@ npm test
 npm run build
 ```
 
-Tests bruger mocks og kontakter ikke produktionsdatabasen.
+App- og deployment-tests bruger mocks og kontakter ikke produktionsdatabasen.
 
-`npm test` kører alle app-tests i `src/` og Node-tests i `scripts/`, også i
-undermapper. Brug `.test` eller `.spec` i filnavnet. På Linux med Bash køres
+`npm test` kører alle app-tests i `src/` og `tests/unit/` samt Node-tests i
+`scripts/`, også i undermapper. Brug `.test` eller `.spec` i filnavnet.
+`npm run test:coverage` kører app-testene med en coverage-rapport i `coverage/`.
+På Linux med Bash køres
 shell-integrationstests i `tests/` med `npm run test:integration`.
-PR- og publish-pipelinen kører begge testkommandoer.
+Playwright tester den kørende MovieRater-app. Installer Chromium én gang og kør:
+
+```sh
+npx playwright install chromium
+npm run test:e2e
+```
+
+Browser-testene findes i `tests/e2e/`. De bruger syntetiske Supabase-værdier.
+Playwright starter selv en isoleret Vite-server.
+Begge pipelines kører `npm run test:ci` (app-tests med coverage og Node-tests),
+`npm run test:integration` og `npm run test:e2e`. Coverage gemmes som et
+workflow-artifakt; ved browserfejl gemmes også HTML-rapport og testresultater.
 
 ## Vedligeholdelse
 

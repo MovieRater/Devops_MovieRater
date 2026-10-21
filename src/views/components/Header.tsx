@@ -8,6 +8,8 @@ import {
 } from '../ui/dropdown-menu';
 import { Checkbox } from '../ui/checkbox';
 import { EnabledRatings } from '../../models/movie';
+import { AccountMenu } from './AccountMenu';
+import type { AppUser } from '../../models/user';
 
 
 interface HeaderProps {
@@ -16,9 +18,16 @@ interface HeaderProps {
   onSearchChange?: (value: string) => void;
   enabledRatings?: EnabledRatings;
   onRatingsChange?: (ratings: EnabledRatings) => void;
+  user?: AppUser | null;
+  authLoading?: boolean;
+  onSignIn?: () => void;
+  onSignOut?: () => void;
 }
 
-export function Header({ onSearchFocus, searchValue = '', onSearchChange, enabledRatings, onRatingsChange }: HeaderProps) {
+export function Header({
+  onSearchFocus, searchValue = '', onSearchChange, enabledRatings, onRatingsChange,
+  user = null, authLoading = false, onSignIn, onSignOut,
+ }: HeaderProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -137,6 +146,13 @@ export function Header({ onSearchFocus, searchValue = '', onSearchChange, enable
 
             </DropdownMenuContent>
           </DropdownMenu>
+          {/* Account */}
+          <AccountMenu
+            user={user}
+            loading={authLoading}
+            onSignIn={() => onSignIn?.()}
+            onSignOut={() => onSignOut?.()}
+          />
         </div>
       </div>
     </header>

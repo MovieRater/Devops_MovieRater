@@ -1,8 +1,10 @@
 name: Docker PR
 
 on:
+  push:
+    branches-ignore: [main]
+    tags-ignore: ['**']
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -16,7 +18,7 @@ jobs:
   docker-check:
     name: Build and test Docker
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       # CI uses isolated configuration and mocks; it never needs the production database.
       VITE_SUPABASE_URL: https://example.supabase.co
@@ -43,11 +45,17 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Application and pipeline tests
-        run: npm test
+      - name: Application coverage and pipeline tests
+        run: npm run test:ci
 
       - name: Deployment integration tests
         run: npm run test:integration
+
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser end-to-end tests
+        run: npm run test:e2e
 
       - name: Build application
         run: npm run build
@@ -109,6 +117,26 @@ jobs:
           path: trivy-*.json
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Upload application coverage
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-pr-${{ github.run_id }}-${{ github.run_attempt }}
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload browser test failure reports
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-pr-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Clean up container
         if: always()

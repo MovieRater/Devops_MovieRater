@@ -1,6 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import App from './App';
+
+// Movie UI tests use a signed-out session and never initialize real authentication.
+vi.mock('./controllers/AuthProvider', () => ({
+  useAuth: () => ({ user: null, loading: false, signIn: vi.fn(), signOut: vi.fn() }),
+}));
 
 const search = (query: string) => {
   fireEvent.change(screen.getByPlaceholderText('Search for movies, directors...'), {

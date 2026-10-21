@@ -6,8 +6,10 @@ Produktionsserveren er endnu ikke tilsluttet. Lad `DEPLOY_ENABLED` være tom ell
 
 ## Pipeline
 
-- En pull request til `main` kører installation fra lockfil, lint, typekontrol,
-  tests, produktionsbuild, Docker-build, containerkontrol og sikkerhedsscanning.
+- Pull requests og push til andre branches end `main` kører installation fra
+  lockfil, lint, typekontrol, app-tests med coverage, Node-tests,
+  deployment-tests, Playwright i Chromium, produktionsbuild, Docker-build,
+  containerkontrol og sikkerhedsscanning. Push-tags håndteres af publish-workflowet.
 - Push/merge til `main` og versionstags bygger og tester et release-image og
   publicerer det til `ghcr.io/ozan0062/devops_movierater`.
 - Det samme image testes før og efter publicering. Der bygges ikke et nyt image
@@ -17,8 +19,13 @@ Produktionsserveren er endnu ikke tilsluttet. Lad `DEPLOY_ENABLED` være tom ell
 - Ved fejl forsøges rollback til den tidligere verificerede release. Workflowet
   fejler stadig, selv hvis rollback lykkes.
 
-Lint, typekontrol og tests er obligatoriske. Supabase-tests bruger mocks og
-syntetiske værdier, så CI ikke behøver adgang til produktionsdatabasen.
+Lint, typekontrol og alle tests er obligatoriske før publicering. Supabase-tests
+bruger mocks og syntetiske værdier, så CI ikke behøver adgang til
+produktionsdatabasen. Browser-testene bruger også syntetisk konfiguration,
+adskilt fra produktionskonfigurationen. Begge workflows indeholder de samme testgrupper;
+det indgående separate `ci.yml` er samlet med dem for at undgå parallelle
+unit- og build-jobs for samme hændelse. En branch med en åben PR udløser både
+push- og PR-kontrollen.
 Containerkontrollen tester også assets, SPA-fallback, cache, gzip og rettigheder.
 
 Trivy scanner npm-dependencies, inklusive build- og testværktøjer, og runtime-imaget. Alle CRITICAL-fund og HIGH-fund
@@ -242,8 +249,9 @@ docker compose -p movierater --env-file /opt/movierater/.env.server -f docker-co
 - Health/HTTPS fejler: kontrollér containerlogs, DNS, firewall og certifikat.
 - Rollback fejler: workflowet forbliver rødt; undersøg serveren manuelt før ny kørsel.
 
-En healthy container alene beviser ikke fungerende Supabase-dataadgang. Appen
-bruger fortsat mockdata; databasefeatures og authentication er separate opgaver.
+En healthy container alene beviser ikke fungerende Supabase-dataadgang eller
+authentication mod det rigtige projekt. De isolerede CI-tests kontrollerer ikke
+produktionsprojektets tabeller, adgangsregler eller brugere.
 
 ## Implementerede filer
 
@@ -251,7 +259,7 @@ De eksisterende Dockerfiler, Compose-filer, Nginx og Caddy genbruges.
 
 | Ændrede filer | Formål |
 | --- | --- |
-| `.github/workflows/docker-pr.yml` | Obligatoriske kvalitetskontroller, Docker-test og scanning på PR. |
+| `.github/workflows/docker-pr.yml` | Obligatoriske kvalitetskontroller, Playwright, Docker-test og scanning på PR og branch-push. |
 | `.github/workflows/docker-publish.yml` | Testet image til GHCR, digestkontrol og godkendt release-artifakt. |
 | `package.json`, `package-lock.json` | Låste lint/testværktøjer og scripts; sikkerhedsrettelse af `source-map-js`. |
 | `src/App.tsx` | Korrekte React hook-afhængigheder og switch-blok; samme funktionalitet. |
@@ -272,16 +280,49 @@ De eksisterende Dockerfiler, Compose-filer, Nginx og Caddy genbruges.
 | `tests/deploy.test.sh` | Linux-tests af deploymentfejl, filrettigheder, låsning, state og rollback. |
 | `eslint.config.mjs`, `vitest.config.ts` | Konfiguration af lint og app-tests. |
 | `src/App.test.tsx`, `src/models/supabase.test.ts`, `src/models/supabaseConfig.test.ts`, `src/test/setup.ts` | App- og Supabase-tests uden rigtige netværkskald. |
+| `playwright.config.ts`, `tests/e2e/smoke.spec.ts` | Chromium-test af den kørende MovieRater-app med isoleret server og Supabase-konfiguration. |
+| `tests/unit/smoke.test.ts` | Collaboratorens grundlæggende Vitest-kontrol, som køres sammen med app-testene. |
 | `src/models/supabaseConfig.ts` | Validering af nødvendige offentlige frontendvariabler. |
 | `.env.server.example` | Serverindstillinger uden credentials. |
 | `.gitattributes` | LF-linjeskift i scripts og workflows, også ved checkout på Windows. |
 | `docs/deployment.md` | GitHub-, server-, HTTPS-, aktiverings- og rollbackvejledning. |
 
-App-tests opdages automatisk som `.test` og `.spec` i `src/`. Node-tests opdages
+App-tests opdages automatisk som `.test` og `.spec` i `src/` og `tests/unit/`.
+`npm run test:coverage` kører de samme app-tests med V8 coverage og rapporter i
+`coverage/`. Testopsætningen er samlet i `vitest.config.ts` og `src/test/setup.ts`.
+Node-tests opdages
 rekursivt i `scripts/`, og shell-integrationstests som `.test.sh` og `.spec.sh`
-rekursivt i `tests/`. Begge PR- og publish-workflows kører `npm test` og
-`npm run test:integration`; en fejl stopper det pågældende workflow.
+rekursivt i `tests/`. Playwright finder browser-tests i `tests/e2e/` via
+`playwright.config.ts`; disse tests køres separat fra Vitest. Collaboratorens
+Vitest-opsætning er samlet med den eksisterende, så `tests/setup.ts` og et
+ekstra `test`-afsnit i `vite.config.ts` ikke er nødvendige.
+
+Begge PR- og publish-workflows kører `npm run test:ci` (app-tests med coverage
+og Node-tests), `npm run test:integration` og `npm run test:e2e`; en fejl stopper
+det pågældende workflow før publicering. CI installerer Chromium med
+`npx playwright install --with-deps chromium`. Lokalt installeres browseren med
+`npx playwright install chromium`, hvorefter `npm run test:e2e` starter
+Vite-serveren og browser-testene. På Linux kan systembiblioteker også kræve
+`--with-deps`.
+
+Coverage-rapporter gemmes som artifakter i 14 dage for PR-/branch-kørsler og 30
+dage for publish-kørsler. HTML-rapport og testresultater fra fejlede browser-tests
+gemmes i 7 dage. Testserveren overskriver Supabase-variablerne med syntetiske
+frontendværdier, så lokal `.env` og produktionskonfiguration ikke bruges.
 Nye testværktøjer skal tilføjes eksplicit til pipelinekonfigurationen.
+
+## Samling med main verificeret 21. oktober 2026
+
+- Ren installation fra lockfil med `npm ci --offline --no-audit --no-fund`,
+  lint og TypeScript-kontrol bestod.
+- `npm run test:ci` bestod: 16 unit-tests og 20 pipeline-tests. Coverage blev genereret.
+- `npm run test:e2e` bestod: collaboratorens MovieRater-smoketest i Chromium.
+- Produktionsbuild med syntetisk Supabase-konfiguration, Compose-konfiguration
+  og workflow-syntaks bestod. Browserinstallationen bestod via Playwrights download-fallback.
+- Docker Desktop kørte ikke, så Docker-build, containerstart og Linux-integrationstests
+  blev ikke genkørt. Verifikationen nedenfor er historisk og gælder ikke som en ny Docker-test.
+- GitHub OAuth-login er bevaret fra main, men ikke verificeret mod en rigtig provider;
+  browser-smoketesten kontrollerer kun appens opstart.
 
 ## Lokalt verificeret 8. oktober 2026
 

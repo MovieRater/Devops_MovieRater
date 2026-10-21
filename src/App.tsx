@@ -6,6 +6,7 @@ import { MovieDetailsScreen } from './views/screens/MovieDetailsScreen';
 import { FilterBar, FilterOptions } from './views/components/FilterBar';
 import { Movie, EnabledRatings, Screen } from './models/movie';
 import { mockMovies, availableGenres, availableYears } from './models/mockMovies';
+import { useAuth } from './controllers/AuthProvider';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -23,6 +24,7 @@ export default function App() {
     rottenTomatoes: true,
     metacritic: true
   });
+  const { user, loading, signIn, signOut } = useAuth();
 
   // Load enabled ratings from localStorage on mount
   useEffect(() => {
@@ -167,6 +169,10 @@ export default function App() {
         onSearchChange={handleSearchChange}
         enabledRatings={enabledRatings}
         onRatingsChange={handleRatingsChange}
+        user={user}
+        authLoading={loading}
+        onSignIn={() => signIn('github')}
+        onSignOut={signOut}
       />
 
       <main className="px-6 py-6 pb-10">
