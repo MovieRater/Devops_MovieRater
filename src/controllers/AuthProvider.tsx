@@ -26,8 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const value: AuthState = {
         user,
         loading,
-        signIn: async provider => { 
-            const { error } = await authRepository.signInWithProvider(provider); 
+        signIn: async provider => {
+            const { error } = await authRepository.signInWithProvider(provider);
             if (error) console.error('Sign-in failed:', error.message);
         },
         signOut: () => { authRepository.signOut(); },

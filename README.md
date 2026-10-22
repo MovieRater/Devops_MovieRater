@@ -78,90 +78,80 @@ Opret disse repository variables på GitHub under
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `DEPLOY_ENABLED=false`, indtil produktionsserveren er klar.
 
-- **Pull request til main:** bygger app og Docker-image, starter en testcontainer
-  og kontrollerer healthcheck, HTTP og sikkerhedsindstillinger.
-- **Push/merge til main:** tester og publicerer imaget til
-  `ghcr.io/ozan0062/devops_movierater` med `sha-<fuldt-commit-id>`, `main` og `latest`.
-  Versionstags som `v1.2.3` understøttes også.
-- **Scanning:** Trivy scanner image og dependencies. Fund gemmes som rapporter
-  og er foreløbigt informative.
-- Lint/tests køres kun, hvis projektet har scripts til dem. Det har det ikke endnu.
+Pull requests og manuel kørsel af PR-workflowet kører lint, typekontrol,
+app-tests med coverage, Node-tests, deployment-tests, Playwright i Chromium,
+app-build, Docker-build, containerkontrol og sikkerhedsscanning. Fejl stopper
+pipelinen. En ændring på en branch med en åben PR udløser én PR-kontrol.
+Andre branches end `main` har ingen automatisk kontrol uden en PR.
 
-Publicering bruger `GITHUB_TOKEN`. Serveren opdateres manuelt.
+Efter push/merge til `main` eller versionstags publiceres det testede image til
+`ghcr.io/movierater/devops_movierater`. Commit-tags og versionsmærker gør det muligt
+at finde en bestemt version; deployment bruger den præcise image-digest.
 
-## Deployment på server
+Trivy stopper release ved alle CRITICAL-fund og HIGH-fund med en rettelse.
+Rapporter gemmes i GitHub Actions. Publicering bruger `GITHUB_TOKEN`.
 
-Når et image er publiceret, kopiér `docker-compose.prod.yml` til en mappe på
-serveren. Opret `.env.server` i samme mappe:
+## Deployment og HTTPS
 
-```dotenv
-MOVIERATER_IMAGE=ghcr.io/ozan0062/devops_movierater:sha-REPLACE_WITH_FULL_COMMIT_SHA
-HTTP_PORT=8080
-```
+Automatisk deployment er forberedt, men forsøger ingen serverforbindelse, før
+`DEPLOY_ENABLED=true`. Production Environment kræver serverindstillinger,
+SSH-nøgle og en verificeret hostkey. Der kan kræves manuel godkendelse på GitHub.
 
-Indsæt det fulde commit-id for den version, du vil køre. Hvis GHCR-pakken er
-privat, log ind med `docker login ghcr.io` og et token med `read:packages`.
+Serveren henter det godkendte image og starter det med Compose. Caddy håndterer
+HTTPS på port 80/443 og sender trafik til Nginx på det interne Docker-netværk.
+Healthcheck, hjemmeside og assets kontrolleres efter deployment.
 
-Hent, start og kontrollér:
-
-```sh
-docker compose -p movierater --env-file .env.server -f docker-compose.prod.yml pull
-docker compose -p movierater --env-file .env.server -f docker-compose.prod.yml up -d --wait
-docker compose -p movierater --env-file .env.server -f docker-compose.prod.yml ps
-curl --fail http://127.0.0.1:8080/health
-```
-
-Port 8080 er kun tilgængelig lokalt på serveren. Serveren bruger det færdige
-image og behøver ikke Node/npm eller appens source code.
-
-Logs og stop:
-
-```sh
-docker compose -p movierater --env-file .env.server -f docker-compose.prod.yml logs -f
-docker compose -p movierater --env-file .env.server -f docker-compose.prod.yml down
-```
-
-## HTTPS
-
-Kopiér også `docker-compose.https.yml` og `Caddyfile` til serveren.
-Peg dit domæne mod serverens IP, og åbn TCP-port 80 og 443.
-
-Tilføj dit rigtige domæne og din email i `.env.server`:
-
-```dotenv
-MOVIERATER_DOMAIN=movierater.example.com
-ACME_EMAIL=admin@example.com
-```
-
-Hent og start med begge Compose-filer:
-
-```sh
-docker compose -p movierater --env-file .env.server -f docker-compose.prod.yml -f docker-compose.https.yml pull
-docker compose -p movierater --env-file .env.server -f docker-compose.prod.yml -f docker-compose.https.yml up -d --wait
-curl --fail https://movierater.example.com/health
-```
-
-Caddy håndterer HTTPS og videresender trafik til MovieRater. Kun port 80/443
-publiceres. Brug dit eget domæne i curl-kommandoen.
-
-Brug begge `-f`-filer ved status, logs, opdatering og stop.
-Brug `down` uden `-v`, så certifikaterne bevares.
+Følg [serveropsætning og aktivering](docs/deployment.md) for GitHub Secrets,
+Variables, GHCR-login, domæne, HTTPS og første deployment.
 
 ## Opdatering og rollback
 
-1. Gem den nuværende `MOVIERATER_IMAGE` som din rollback-version.
-2. Vælg en ny version ved at ændre `MOVIERATER_IMAGE` i `.env.server`.
-3. Kør deployment-kommandoerne `pull` og `up -d --wait` igen.
-4. Kontrollér `ps`, healthcheck, hjemmesiden og logs.
+Godkendte main-releases deployes automatisk, når deployment er aktiveret.
+Ved fejl forsøges rollback til den tidligere verificerede release.
 
-For rollback sættes `MOVIERATER_IMAGE` tilbage til den tidligere commit-version,
-og de samme kommandoer køres. Der kræves intet rebuild. Bevar tidligere images
-i GHCR, og brug commit-tags eller digests til rollback.
+Manuel deployment og rollback køres gennem deployment-workflowets
+**Run workflow** på `main`. Tidligere image-digests og konfigurationer bevares;
+der kræves intet rebuild. Se [den trinvise vejledning](docs/deployment.md).
+
+## Lokale kvalitetskontroller
+
+Med Node og npm installeret samt en udfyldt `.env`:
+
+```sh
+npm ci
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+App- og deployment-tests bruger mocks og kontakter ikke produktionsdatabasen.
+
+`npm test` kører alle app-tests i `src/` og `tests/unit/` samt Node-tests i
+`scripts/`, også i undermapper. Brug `.test` eller `.spec` i filnavnet.
+`npm run test:coverage` kører app-testene med en coverage-rapport i `coverage/`.
+På Linux med Bash køres
+shell-integrationstests i `tests/` med `npm run test:integration`.
+Playwright tester den kørende MovieRater-app. Installer Chromium én gang og kør:
+
+```sh
+npx playwright install chromium
+npm run test:e2e
+```
+
+Browser-testene findes i `tests/e2e/`. De bruger syntetiske Supabase-værdier.
+Playwright starter selv en isoleret Vite-server.
+Begge pipelines kører `npm run test:ci` (app-tests med coverage og Node-tests),
+`npm run test:integration` og `npm run test:e2e`. Coverage gemmes som et
+workflow-artifakt; ved browserfejl gemmes også HTML-rapport og testresultater.
 
 ## Vedligeholdelse
 
 Opdatér base-image-versioner og digests via en PR. Hold Node-versionen ens i
 Dockerfilerne og `.nvmrc`, og gennemgå CI-kontrollerne og Trivy-rapporten.
-Den midlertidige `pcre2`-pin i Dockerfile kan fjernes, når base-imaget
-indeholder sikkerhedsrettelsen.
+Runtime-pakker opdateres med `apk upgrade --no-cache` inden for base-imagets
+Alpine-version; base-imaget er fortsat fastlåst med version og digest.
+Hent nye pakker ved at genbygge uden cache med `docker compose build --no-cache`
+eller opdatere base-imagets digest. Trivy-kontrollen gælder fortsat.

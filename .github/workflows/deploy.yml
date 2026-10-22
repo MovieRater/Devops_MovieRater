@@ -1,0 +1,185 @@
+name: Deploy MovieRater
+
+on:
+  workflow_call:
+    inputs:
+      image_ref:
+        type: string
+        required: true
+      revision:
+        type: string
+        required: true
+      publish_run_id:
+        type: string
+        required: true
+      automatic:
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Deploy a published revision, or roll back to the previous verified server release
+        type: choice
+        options: [deploy, rollback]
+        default: deploy
+      revision:
+        description: Full 40-character commit SHA for deploy; leave empty for rollback
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  packages: read
+  actions: read
+
+jobs:
+  production:
+    name: Deploy verified digest
+    if: github.repository == 'MovieRater/Devops_MovieRater' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production
+    concurrency:
+      group: movierater-production
+      queue: max
+      cancel-in-progress: false
+    env:
+      DOCKER_SMOKE_CONTAINER: movierater-deploy-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout trusted workflow helpers
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Prepare pinned SSH identity without connecting
+        id: ssh
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/movierater' }}
+          DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: node scripts/deploy-remote.mjs setup
+
+      - name: Read previous release for manual rollback
+        id: previous
+        if: inputs.operation == 'rollback'
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/movierater' }}
+          DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+          SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
+        run: node scripts/deploy-remote.mjs previous
+
+      - name: Log in to GHCR with read permission
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify successful publishing job and immutable release bundle
+        id: approved
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_REVISION: ${{ steps.previous.outputs.revision || inputs.revision }}
+          APPROVED_IMAGE: ${{ steps.previous.outputs.image_ref || inputs.image_ref }}
+          PUBLISH_RUN_ID: ${{ inputs.publish_run_id }}
+          AUTOMATIC: ${{ inputs.automatic || false }}
+        run: node scripts/release.mjs resolve
+
+      - name: Checkout the approved release configuration
+        if: steps.approved.outputs.skip != 'true'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ steps.approved.outputs.revision }}
+          path: approved-release
+          persist-credentials: false
+
+      - name: Recheck the approved container before deployment
+        if: steps.approved.outputs.skip != 'true'
+        env:
+          APPROVED_IMAGE: ${{ steps.approved.outputs.image_ref }}
+        run: node scripts/docker-smoke.mjs "$APPROVED_IMAGE"
+
+      - name: Scan approved image
+        if: steps.approved.outputs.skip != 'true'
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          version: v0.69.3
+          scan-type: image
+          image-ref: ${{ steps.approved.outputs.image_ref }}
+          scanners: vuln
+          format: json
+          output: trivy-deploy-image.json
+          severity: HIGH,CRITICAL
+          exit-code: '0'
+
+      - name: Scan approved npm dependency lock
+        if: steps.approved.outputs.skip != 'true'
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: 'true'
+        with:
+          skip-setup-trivy: true
+          scan-type: fs
+          scan-ref: approved-release
+          skip-dirs: approved-release/node_modules,approved-release/dist,approved-release/.git,approved-release/.cache,approved-release/.ci-local-tests
+          scanners: vuln
+          format: json
+          output: trivy-deploy-dependencies.json
+          severity: HIGH,CRITICAL
+          exit-code: '0'
+
+      - name: Enforce current security policy
+        if: steps.approved.outputs.skip != 'true'
+        run: node scripts/check-vulnerabilities.mjs trivy-deploy-image.json trivy-deploy-dependencies.json
+
+      - name: Recheck automatic deployment is still current before SSH
+        id: fresh
+        if: steps.approved.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_REVISION: ${{ steps.approved.outputs.revision }}
+          AUTOMATIC: ${{ inputs.automatic || false }}
+        run: node scripts/release.mjs fresh
+
+      - name: Deploy or roll back and verify public HTTPS
+        if: steps.approved.outputs.skip != 'true' && steps.fresh.outputs.skip != 'true'
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/movierater' }}
+          DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+          SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
+          DEPLOY_OPERATION: ${{ inputs.operation || 'deploy' }}
+        run: node scripts/deploy-remote.mjs apply
+
+      - name: Upload deployment security reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trivy-deploy-${{ github.run_id }}-${{ github.run_attempt }}
+          path: trivy-deploy-*.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Remove temporary SSH credentials
+        if: always()
+        env:
+          SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
+        run: node scripts/deploy-remote.mjs cleanup
+
+      - name: Clean up test container
+        if: always()
+        run: docker rm --force "$DOCKER_SMOKE_CONTAINER" 2>/dev/null || true

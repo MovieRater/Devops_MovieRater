@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Header } from './views/components/Header';
 import { RatingCard } from './views/components/RatingCard';
 import { SearchResultsScreen } from './views/screens/SearchResultsScreen';
@@ -131,7 +131,7 @@ export default function App() {
   };
 
   // Apply filters and sorting
-  const applyFilters = (movies: Movie[]) => {
+  const applyFilters = useCallback((movies: Movie[]) => {
     let filtered = [...movies];
 
     if (filters.genres.length > 0) {
@@ -178,12 +178,12 @@ export default function App() {
     });
 
     return filtered;
-  };
+  }, [filters]);
 
   // Filter trending movies for home screen
   const homeMovies = useMemo(
     () => applyFilters(trendingMovies),
-    [trendingMovies, filters]
+    [trendingMovies, applyFilters]
   );
 
   // Filter movies based on search
@@ -195,7 +195,7 @@ export default function App() {
         movie.director.toLowerCase().includes(query)
     );
     return applyFilters(matches);
-  }, [searchQuery, filters, trendingMovies]);
+  }, [searchQuery, applyFilters, trendingMovies]);
 
   // Screen routing
   if (currentScreen === 'details' && selectedMovie) {
