@@ -80,10 +80,11 @@ Opret disse repository variables på GitHub under
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `DEPLOY_ENABLED=false`, indtil produktionsserveren er klar.
 
-Pull requests og push til andre branches end `main` kører lint, typekontrol,
+Pull requests og manuel kørsel af PR-workflowet kører lint, typekontrol,
 app-tests med coverage, Node-tests, deployment-tests, Playwright i Chromium,
 app-build, Docker-build, containerkontrol og sikkerhedsscanning. Fejl stopper
-pipelinen. Et push til en branch med en åben PR udløser både push- og PR-kontrollen.
+pipelinen. En ændring på en branch med en åben PR udløser én PR-kontrol.
+Andre branches end `main` har ingen automatisk kontrol uden en PR.
 
 Efter push/merge til `main` eller versionstags publiceres det testede image til
 `ghcr.io/movierater/devops_movierater`. Commit-tags og versionsmærker gør det muligt
@@ -150,5 +151,7 @@ workflow-artifakt; ved browserfejl gemmes også HTML-rapport og testresultater.
 
 Opdatér base-image-versioner og digests via en PR. Hold Node-versionen ens i
 Dockerfilerne og `.nvmrc`, og gennemgå CI-kontrollerne og Trivy-rapporten.
-De midlertidige Alpine-pins i Dockerfile kan fjernes, når det fastlåste
-base-image indeholder de samme sikkerhedsrettelser.
+Runtime-pakker opdateres med `apk upgrade --no-cache` inden for base-imagets
+Alpine-version; base-imaget er fortsat fastlåst med version og digest.
+Hent nye pakker ved at genbygge uden cache med `docker compose build --no-cache`
+eller opdatere base-imagets digest. Trivy-kontrollen gælder fortsat.

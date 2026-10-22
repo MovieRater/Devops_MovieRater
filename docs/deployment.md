@@ -6,10 +6,11 @@ Produktionsserveren er endnu ikke tilsluttet. Lad `DEPLOY_ENABLED` være tom ell
 
 ## Pipeline
 
-- Pull requests og push til andre branches end `main` kører installation fra
+- Pull requests og manuel kørsel af PR-workflowet kører installation fra
   lockfil, lint, typekontrol, app-tests med coverage, Node-tests,
   deployment-tests, Playwright i Chromium, produktionsbuild, Docker-build,
-  containerkontrol og sikkerhedsscanning. Push-tags håndteres af publish-workflowet.
+  containerkontrol og sikkerhedsscanning. Branches uden en PR har ingen separat
+  push-kontrol; `main` og versionstags håndteres af publish-workflowet.
 - Push/merge til `main` og versionstags bygger og tester et release-image og
   publicerer det til `ghcr.io/movierater/devops_movierater`.
 - Det samme image testes før og efter publicering. Der bygges ikke et nyt image
@@ -24,13 +25,19 @@ bruger mocks og syntetiske værdier, så CI ikke behøver adgang til
 produktionsdatabasen. Browser-testene bruger også syntetisk konfiguration,
 adskilt fra produktionskonfigurationen. Begge workflows indeholder de samme testgrupper;
 det indgående separate `ci.yml` er samlet med dem for at undgå parallelle
-unit- og build-jobs for samme hændelse. En branch med en åben PR udløser både
-push- og PR-kontrollen.
+unit- og build-jobs for samme hændelse. Opdateringer af en åben PR udløser én
+PR-kørsel, uden en ekstra kontrol fra branchens push.
 Containerkontrollen tester også assets, SPA-fallback, cache, gzip og rettigheder.
 
 Trivy scanner npm-dependencies, inklusive build- og testværktøjer, og runtime-imaget. Alle CRITICAL-fund og HIGH-fund
 med en tilgængelig rettelse stopper pipelinen. HIGH-fund uden rettelse vises i
 rapporten. Fejl i scanneren eller rapportvalideringen stopper også pipelinen.
+
+Base-images er fastlåst med version og digest. Runtime-pakker opdateres med
+`apk upgrade --no-cache` fra den valgte Alpine-versions repositories uden
+fastlåsning af enkelte pakkeversioner. Docker kan genbruge et tidligere build-lag;
+hent nye sikkerhedsrettelser med `docker compose build --no-cache` eller ved
+opdatering af base-imagets digest, og kontrollér det nye image med Trivy.
 
 ## Versionsmærkning og release
 
@@ -259,7 +266,7 @@ De eksisterende Dockerfiler, Compose-filer, Nginx og Caddy genbruges.
 
 | Ændrede filer | Formål |
 | --- | --- |
-| `.github/workflows/docker-pr.yml` | Obligatoriske kvalitetskontroller, Playwright, Docker-test og scanning på PR og branch-push. |
+| `.github/workflows/docker-pr.yml` | Obligatoriske kvalitetskontroller, Playwright, Docker-test og scanning på PR eller ved manuel kørsel. |
 | `.github/workflows/docker-publish.yml` | Testet image til GHCR, digestkontrol og godkendt release-artifakt. |
 | `package.json`, `package-lock.json` | Låste lint/testværktøjer og scripts; sikkerhedsrettelse af `source-map-js`. |
 | `src/App.tsx` | Korrekte React hook-afhængigheder og switch-blok; samme funktionalitet. |
@@ -305,11 +312,24 @@ det pågældende workflow før publicering. CI installerer Chromium med
 Vite-serveren og browser-testene. På Linux kan systembiblioteker også kræve
 `--with-deps`.
 
-Coverage-rapporter gemmes som artifakter i 14 dage for PR-/branch-kørsler og 30
+Coverage-rapporter gemmes som artifakter i 14 dage for PR-/manuelle kørsler og 30
 dage for publish-kørsler. HTML-rapport og testresultater fra fejlede browser-tests
 gemmes i 7 dage. Testserveren overskriver Supabase-variablerne med syntetiske
 frontendværdier, så lokal `.env` og produktionskonfiguration ikke bruges.
 Nye testværktøjer skal tilføjes eksplicit til pipelinekonfigurationen.
+
+## PR-reviewrettelser verificeret 22. oktober 2026
+
+- Dockerfilens præcise Alpine-pakkeversioner er erstattet med `apk upgrade --no-cache`.
+  Base-image-versioner og digests samt non-root-runtime er bevaret.
+- PR-workflowet bruger kun `pull_request` og `workflow_dispatch`. Push til en åben
+  PR giver derfor ingen separat push-kørsel. Publicering fra `main` og tags er uændret.
+- Et nyt Docker-build med `--pull --no-cache` og containerkontrollen bestod:
+  healthy, UID 101, read-only filesystem, HTTP, assets, SPA-fallback og headers.
+- Trivy `0.69.3` fandt 0 HIGH/CRITICAL i runtime-imaget og de uændrede
+  npm-afhængigheder inklusive udviklingspakker. Den uændrede policy-kontrol bestod.
+- Workflow-syntaks og `git diff --check` bestod. Scanningsrapporterne er gemt
+  lokalt i `.cache/security-20261022/`. Ændringerne er endnu ikke pushet til PR'en.
 
 ## Sikkerhedsrettelser verificeret 21. oktober 2026
 
