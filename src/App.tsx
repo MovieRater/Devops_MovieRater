@@ -167,8 +167,8 @@ export default function App() {
           comparison = a.title.localeCompare(b.title);
           break;
         case 'views':
-          const aViews = parseFloat(a.views?.replace('M', '') || "0");
-          const bViews = parseFloat(b.views?.replace('M', '') || "0");
+          const aViews = parseFloat(a.views?.replace('M', ''));
+          const bViews = parseFloat(b.views?.replace('M', ''));
           comparison = aViews - bViews;
           break;
       }
