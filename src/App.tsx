@@ -5,7 +5,6 @@ import { SearchResultsScreen } from './views/screens/SearchResultsScreen';
 import { MovieDetailsScreen } from './views/screens/MovieDetailsScreen';
 import { FilterBar, FilterOptions } from './views/components/FilterBar';
 import { Movie, EnabledRatings, Screen } from './models/movie';
-import { mockMovies, availableGenres, availableYears } from './models/mockMovies';
 import { useAuth } from './controllers/AuthProvider';
 import { loadTrendingMovies } from "@/api/movies";
 import {getGenres} from "@/api/tmdb";
