@@ -36,14 +36,26 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
 
   useEffect(() => {
     async function load() {
-      if (movie.ratings.imdb > 0 || movie.imdbId === null) {
-        setFullMovie(movie);
+
+      setFullMovie(movie);
+
+      if (!movie.retryNeeded) {
         return;
       }
 
-      const merged = await loadMovieDetails(movie.id);
-      setFullMovie(merged);
+      try {
+        const fresh = await loadMovieDetails(movie.id);
+
+        setFullMovie({
+          ...movie,
+          ...fresh
+        });
+
+      } catch (err) {
+        console.error("Failed to refresh movie", err);
+      }
     }
+
     load();
   }, [movie]);
 
