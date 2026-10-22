@@ -1,5 +1,36 @@
 import { Movie } from "../models/movie";
 
+export interface TmdbTrendingMovie {
+    id: number;
+    title: string;
+    release_date: string;
+    poster_path: string | null;
+    genre_ids: number[];
+}
+
+export interface TmdbCrewMember {
+    name: string;
+    job: string;
+}
+
+export interface TmdbCastMember {
+    name: string;
+}
+
+export interface TmdbCreditsResponse {
+    crew: TmdbCrewMember[];
+    cast: TmdbCastMember[];
+}
+
+export interface TmdbGenre {
+    id: number;
+    name: string;
+}
+
+export interface TmdbGenreResponse {
+    genres: TmdbGenre[];
+}
+
 // -------------------------------------------------------------
 // CONFIG
 // -------------------------------------------------------------
@@ -48,7 +79,9 @@ export async function getMovieDetails(id: number) {
     return tmdbFetch(`movie/${id}`);
 }
 
-export async function getMovieCredits(id: number) {
+export async function getMovieCredits(
+    id: number
+): Promise<TmdbCreditsResponse> {
     return tmdbFetch(`movie/${id}/credits`);
 }
 
@@ -60,7 +93,7 @@ export async function searchMovies(query: string) {
     return tmdbFetch(`search/movie?query=${encodeURIComponent(query)}`);
 }
 
-export async function getGenres() {
+export async function getGenres(): Promise<TmdbGenreResponse> {
     return tmdbFetch("genre/movie/list");
 }
 
@@ -71,9 +104,12 @@ export async function getGenres() {
 export async function safeGetExternalIds(id: number) {
     try {
         return await getExternalIds(id);
-    } catch (err: any) {
+    } catch (err: unknown) {
         // Detect TMDB rate limit (429)
-        if (err.message?.includes("429")) {
+        if (
+            err instanceof Error &&
+            err.message.includes("429")
+        ) {
             console.warn(`TMDB rate limit hit for movie ${id}, will retry later.`);
             return { imdb_id: null, retryNeeded: true };
         }
@@ -87,7 +123,7 @@ export async function safeGetExternalIds(id: number) {
 // MAPPING (TMDB → Movie)
 // -------------------------------------------------------------
 
-export function mapTmdbMovie(tmdb: any): Movie {
+export function mapTmdbMovie(tmdb: TmdbTrendingMovie): Movie {
     return {
         id: tmdb.id,
         title: tmdb.title,

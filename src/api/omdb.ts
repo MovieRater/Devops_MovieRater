@@ -48,6 +48,14 @@ export async function getOmdbByImdbId(imdbId: string) {
 // -------------------------------------------------------------
 // RATING PARSER
 // -------------------------------------------------------------
+interface OmdbRatingEntry {
+    Source: string;
+    Value: string;
+}
+
+interface OmdbMovieResponse {
+    Ratings: OmdbRatingEntry[];
+}
 
 export type OmdbRatings = {
     imdb: number;
@@ -55,7 +63,7 @@ export type OmdbRatings = {
     metacritic: number;
 };
 
-export function mapOmdbRatings(omdb: any): OmdbRatings {
+export function mapOmdbRatings(omdb: OmdbMovieResponse): OmdbRatings {
     const ratingsArray = omdb.Ratings || [];
 
     let imdb = 0;

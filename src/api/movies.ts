@@ -3,7 +3,9 @@ import {
     mapTmdbMovie,
     getMovieDetails,
     getMovieCredits,
-    safeGetExternalIds
+    safeGetExternalIds,
+    TmdbCrewMember,
+    TmdbCastMember
 } from "./tmdb";
 
 import { getOmdbRatingsCached } from "./omdb";
@@ -47,8 +49,8 @@ export async function buildMovie(movie: Movie): Promise<Movie> {
         return { ...movie, retryNeeded };
     }
 
-    const director = credits.crew?.find((c: any) => c.job === "Director")?.name || "Unknown";
-    const cast = credits.cast?.slice(0, 10).map((c: any) => c.name) || [];
+    const director = credits.crew?.find((c: TmdbCrewMember) => c.job === "Director")?.name || "Unknown";
+    const cast = credits.cast?.slice(0, 10).map((c: TmdbCastMember) => c.name) || [];
 
     let enriched: Movie = {
         ...movie,

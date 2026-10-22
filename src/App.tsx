@@ -7,7 +7,7 @@ import { FilterBar, FilterOptions } from './views/components/FilterBar';
 import { Movie, EnabledRatings, Screen } from './models/movie';
 import { useAuth } from './controllers/AuthProvider';
 import { loadTrendingMovies } from "@/api/movies";
-import {getGenres} from "@/api/tmdb";
+import { getGenres, TmdbGenre } from "@/api/tmdb";
 
 
 
@@ -83,12 +83,12 @@ export default function App() {
       const data = await getGenres();
 
       const map: Record<number, string> = {};
-      data.genres.forEach((g: any) => {
+      data.genres.forEach((g: TmdbGenre) => {
         map[g.id] = g.name;
       });
 
       setGenreMap(map);
-      setAvailableGenres(data.genres.map((g: any) => g.name));
+      setAvailableGenres(data.genres.map((g: TmdbGenre) => g.name));
     }
 
     loadGenres();
