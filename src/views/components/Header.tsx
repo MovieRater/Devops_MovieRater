@@ -24,8 +24,8 @@ interface HeaderProps {
   onSignOut?: () => void;
 }
 
-export function Header({ 
-  onSearchFocus, searchValue = '', onSearchChange, enabledRatings, onRatingsChange, 
+export function Header({
+  onSearchFocus, searchValue = '', onSearchChange, enabledRatings, onRatingsChange,
   user = null, authLoading = false, onSignIn, onSignOut,
  }: HeaderProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);

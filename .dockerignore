@@ -15,5 +15,10 @@ dist-ssr
 *.log
 *.tsbuildinfo
 coverage
+playwright-report
+test-results
+.cache
+.deploy-state
+docs
 README.md
 .DS_Store

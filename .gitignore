@@ -18,6 +18,8 @@ dist-ssr
 !.env.example
 !.env.server.example
 *.tsbuildinfo
+.deploy-state/
+.cache/
 
 # Editor directories and files
 .vscode/*

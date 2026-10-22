@@ -18,7 +18,7 @@ export const authRepository = {
             provider,
             options: { redirectTo: window.location.origin },
         }),
-    
+
     signOut: () => supabase.auth.signOut(),
 
     async getCurrentUser(): Promise<AppUser | null> {

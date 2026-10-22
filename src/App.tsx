@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Header } from './views/components/Header';
 import { RatingCard } from './views/components/RatingCard';
 import { SearchResultsScreen } from './views/screens/SearchResultsScreen';
@@ -75,7 +75,7 @@ export default function App() {
   };
 
   // Apply filters and sorting
-  const applyFilters = (movies: Movie[]) => {
+  const applyFilters = useCallback((movies: Movie[]) => {
     let filtered = [...movies];
 
     if (filters.genres.length > 0) {
@@ -111,23 +111,24 @@ export default function App() {
         case 'title':
           comparison = a.title.localeCompare(b.title);
           break;
-        case 'views':
+        case 'views': {
           const aViews = parseFloat(a.views.replace('M', ''));
           const bViews = parseFloat(b.views.replace('M', ''));
           comparison = aViews - bViews;
           break;
+        }
       }
 
       return filters.sortOrder === 'desc' ? -comparison : comparison;
     });
 
     return filtered;
-  };
+  }, [filters]);
 
   // Filter movies for home screen (exclude The Dark Knight for variety)
   const homeMovies = useMemo(
     () => applyFilters(mockMovies.filter(movie => movie.id !== 5)),
-    [filters]
+    [applyFilters]
   );
 
   // Filter movies based on search
@@ -139,7 +140,7 @@ export default function App() {
       movie.director.toLowerCase().includes(query)
     );
     return applyFilters(matches);
-  }, [searchQuery, filters]);
+  }, [searchQuery, applyFilters]);
 
   // Screen routing
   if (currentScreen === 'details' && selectedMovie) {
