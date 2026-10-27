@@ -166,11 +166,12 @@ export default function App() {
         case 'title':
           comparison = a.title.localeCompare(b.title);
           break;
-        case 'views':
+        case 'views': {
           const aViews = parseFloat(a.views?.replace('M', ''));
           const bViews = parseFloat(b.views?.replace('M', ''));
           comparison = aViews - bViews;
           break;
+        }
       }
 
       return filters.sortOrder === 'desc' ? -comparison : comparison;

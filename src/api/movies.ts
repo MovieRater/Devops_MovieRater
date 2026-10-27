@@ -5,7 +5,9 @@ import {
     getMovieCredits,
     safeGetExternalIds,
     TmdbCrewMember,
-    TmdbCastMember
+    TmdbCastMember,
+    TmdbMovieDetails,
+    SafeExternalIdsResponse
 } from "./tmdb";
 
 import { getOmdbRatingsCached } from "./omdb";
@@ -28,7 +30,11 @@ export async function buildMovie(movie: Movie): Promise<Movie> {
     let retryNeeded = false;
 
     // 1. TMDB enrichment (details + credits + external IDs)
-    let details, credits, externalIds;
+    let details:
+        TmdbMovieDetails;
+    let credits;
+    let externalIds:
+        SafeExternalIdsResponse
 
     try {
         [details, credits] = await Promise.all([

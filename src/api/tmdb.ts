@@ -1,5 +1,22 @@
 import { Movie } from "../models/movie";
 
+
+export interface TmdbMovieDetails {
+    runtime: number;
+    overview: string;
+    original_language: string;
+    origin_country: string[];
+}
+
+export interface TmdbExternalIdsResponse {
+    imdb_id: string | null;
+}
+
+export interface SafeExternalIdsResponse
+    extends TmdbExternalIdsResponse {
+    retryNeeded?: boolean;
+}
+
 export interface TmdbTrendingMovie {
     id: number;
     title: string;
@@ -75,7 +92,9 @@ export async function getTrendingMovies() {
     return tmdbFetch("trending/movie/week");
 }
 
-export async function getMovieDetails(id: number) {
+export async function getMovieDetails(
+    id: number
+): Promise<TmdbMovieDetails> {
     return tmdbFetch(`movie/${id}`);
 }
 
@@ -85,7 +104,9 @@ export async function getMovieCredits(
     return tmdbFetch(`movie/${id}/credits`);
 }
 
-export async function getExternalIds(id: number) {
+export async function getExternalIds(
+    id: number
+): Promise<TmdbExternalIdsResponse> {
     return tmdbFetch(`movie/${id}/external_ids`);
 }
 
@@ -101,7 +122,9 @@ export async function getGenres(): Promise<TmdbGenreResponse> {
 // SAFE WRAPPER FOR EXTERNAL IDS (RETRY DETECTION)
 // -------------------------------------------------------------
 
-export async function safeGetExternalIds(id: number) {
+export async function safeGetExternalIds(
+    id: number
+): Promise<SafeExternalIdsResponse> {
     try {
         return await getExternalIds(id);
     } catch (err: unknown) {
