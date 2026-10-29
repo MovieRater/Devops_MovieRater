@@ -19,6 +19,8 @@ export interface Movie {
   country: string;
   ratings: Rating;
   posterUrl: string;
+  imdbId: string | null;
+  retryNeeded?: boolean;
 }
 
 export interface EnabledRatings {
