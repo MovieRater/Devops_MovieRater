@@ -29,4 +29,11 @@ export interface EnabledRatings {
   metacritic: boolean;
 }
 
+export interface MoviePreview {
+  id: number;
+  title: string;
+  year: number;
+  posterUrl: string;
+}
+
 export type Screen = 'home' | 'search' | 'details';

@@ -7,12 +7,17 @@ import {
     TmdbCrewMember,
     TmdbCastMember,
     TmdbMovieDetails,
-    SafeExternalIdsResponse
+    SafeExternalIdsResponse,
+    searchMovies,
+    mapTmdbSearchMovie
 } from "./tmdb";
 
 import { getOmdbRatingsCached } from "./omdb";
 
-import { Movie } from "@/models/movie";
+import {
+    Movie,
+    MoviePreview
+} from "@/models/movie";
 
 import {
     loadCache,
@@ -161,4 +166,23 @@ export async function loadTrendingMovies(): Promise<Movie[]> {
     saveTrendingCache(finalMovies);
 
     return finalMovies;
+}
+
+// -------------------------------------------------------------
+// SEARCH MOVIE PIPELINE
+// -------------------------------------------------------------
+
+export async function loadSearchResults(
+    query: string
+): Promise<MoviePreview[]> {
+
+    if (!query.trim()) {
+        return [];
+    }
+
+    const results = await searchMovies(query);
+
+    return results.results
+        .map(mapTmdbSearchMovie)
+        .slice(0, 10)
 }

@@ -1,4 +1,4 @@
-import { Movie } from "../models/movie";
+import {Movie, MoviePreview} from "../models/movie";
 
 
 export interface TmdbMovieDetails {
@@ -23,6 +23,18 @@ export interface TmdbTrendingMovie {
     release_date: string;
     poster_path: string | null;
     genre_ids: number[];
+}
+
+export interface TmdbSearchMovie {
+    id: number;
+    title: string;
+    release_date: string;
+    poster_path: string | null;
+}
+
+export interface TmdbSearchResponse
+{
+    results: TmdbSearchMovie[];
 }
 
 export interface TmdbCrewMember {
@@ -110,7 +122,9 @@ export async function getExternalIds(
     return tmdbFetch(`movie/${id}/external_ids`);
 }
 
-export async function searchMovies(query: string) {
+export async function searchMovies(
+    query: string
+): Promise<TmdbSearchResponse> {
     return tmdbFetch(`search/movie?query=${encodeURIComponent(query)}`);
 }
 
@@ -175,5 +189,20 @@ export function mapTmdbMovie(tmdb: TmdbTrendingMovie): Movie {
             : "",
 
         genre: tmdb.genre_ids?.map((id: number) => id.toString()) || [],
+    };
+}
+
+export function mapTmdbSearchMovie(
+    tmdb: TmdbSearchMovie
+): MoviePreview {
+    return {
+        id: tmdb.id,
+        title: tmdb.title,
+        year: parseInt(
+            tmdb.release_date?.slice(0, 4)
+        ) || 0,
+        posterUrl: tmdb.poster_path
+            ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}`
+            : ""
     };
 }
