@@ -3,7 +3,7 @@ name: Docker publish
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -26,8 +26,13 @@ jobs:
       contents: read
       packages: write
     env:
-      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
+      VITE_TMDB_BASE_URL: ${{ secrets.VITE_TMDB_BASE_URL }}
+      VITE_TMDB_IMAGE_BASE: ${{ secrets.VITE_TMDB_IMAGE_BASE }}
+      VITE_OMDB_API_KEY: ${{ secrets.VITE_OMDB_API_KEY }}
+      VITE_OMDB_BASE_URL: ${{ secrets.VITE_OMDB_BASE_URL }}
       DOCKER_SMOKE_CONTAINER: movierater-publish-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       image_ref: ${{ steps.verify.outputs.image_ref }}
@@ -41,7 +46,7 @@ jobs:
 
       - name: Require public frontend configuration
         run: |
-          for name in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY VITE_TMDB_API_KEY VITE_TMDB_BASE_URL VITE_TMDB_IMAGE_BASE VITE_OMDB_API_KEY VITE_OMDB_BASE_URL; do
             if [ -z "${!name}" ]; then
               echo "::error::Set repository variable $name under Settings > Secrets and variables > Actions > Variables."
               exit 1
@@ -164,6 +169,11 @@ jobs:
           build-args: |
             VITE_SUPABASE_URL=${{ env.VITE_SUPABASE_URL }}
             VITE_SUPABASE_PUBLISHABLE_KEY=${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+            VITE_TMDB_API_KEY=${{ env.VITE_TMDB_API_KEY }}
+            VITE_TMDB_BASE_URL=${{ env.VITE_TMDB_BASE_URL }}
+            VITE_TMDB_IMAGE_BASE=${{ env.VITE_TMDB_IMAGE_BASE }}
+            VITE_OMDB_API_KEY=${{ env.VITE_OMDB_API_KEY }}
+            VITE_OMDB_BASE_URL=${{ env.VITE_OMDB_BASE_URL }}
           cache-from: type=gha,scope=movierater-publish
           cache-to: type=gha,mode=max,scope=movierater-publish
 
@@ -180,12 +190,12 @@ jobs:
           format: json
           output: trivy-image.json
           severity: HIGH,CRITICAL
-          exit-code: '0'
+          exit-code: "0"
 
       - name: Scan npm dependencies
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         env:
-          TRIVY_INCLUDE_DEV_DEPS: 'true'
+          TRIVY_INCLUDE_DEV_DEPS: "true"
         with:
           skip-setup-trivy: true
           scan-type: fs
@@ -195,7 +205,7 @@ jobs:
           format: json
           output: trivy-dependencies.json
           severity: HIGH,CRITICAL
-          exit-code: '0'
+          exit-code: "0"
 
       - name: Enforce vulnerability policy
         run: node scripts/check-vulnerabilities.mjs trivy-image.json trivy-dependencies.json

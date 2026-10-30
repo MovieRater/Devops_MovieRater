@@ -11,6 +11,8 @@ services:
       VITE_TMDB_API_KEY: ${VITE_TMDB_API_KEY}
       VITE_TMDB_BASE_URL: ${VITE_TMDB_BASE_URL}
       VITE_TMDB_IMAGE_BASE: ${VITE_TMDB_IMAGE_BASE}
+      VITE_OMDB_API_KEY: ${VITE_OMDB_API_KEY}
+      VITE_OMDB_BASE_URL: ${VITE_OMDB_BASE_URL}
       DOCKER_WATCH_POLLING: "true"
     volumes:
       - ./src:/app/src:ro
