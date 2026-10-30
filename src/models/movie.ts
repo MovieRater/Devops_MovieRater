@@ -36,4 +36,4 @@ export interface MoviePreview {
   posterUrl: string;
 }
 
-export type Screen = 'home' | 'search' | 'details';
+export type Screen = 'home' | 'details';

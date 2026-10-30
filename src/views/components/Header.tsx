@@ -13,7 +13,6 @@ import type { AppUser } from '../../models/user';
 
 
 interface HeaderProps {
-  onSearchFocus?: () => void;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   enabledRatings?: EnabledRatings;
@@ -25,7 +24,7 @@ interface HeaderProps {
 }
 
 export function Header({
-  onSearchFocus, searchValue = '', onSearchChange, enabledRatings, onRatingsChange,
+  searchValue = '', onSearchChange, enabledRatings, onRatingsChange,
   user = null, authLoading = false, onSignIn, onSignOut,
  }: HeaderProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -84,7 +83,6 @@ export function Header({
               placeholder="Search for movies, directors..."
               value={searchValue}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              onFocus={onSearchFocus}
               className="bg-transparent text-foreground placeholder-muted-foreground flex-1 outline-none text-sm min-w-0"
             />
           </div>

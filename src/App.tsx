@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Header } from './views/components/Header';
 import { RatingCard } from './views/components/RatingCard';
-import { SearchResultsScreen } from './views/screens/SearchResultsScreen';
 import { MovieDetailsScreen } from './views/screens/MovieDetailsScreen';
 import { FilterBar, FilterOptions } from './views/components/FilterBar';
-import { Movie, EnabledRatings, Screen } from './models/movie';
+import { Movie, MoviePreview, EnabledRatings, Screen } from './models/movie';
 import { useAuth } from './controllers/AuthProvider';
-import { loadTrendingMovies } from "@/api/movies";
+import { loadTrendingMovies, loadSearchResults, loadMovieDetails } from "@/api/movies";
 import { getGenres, TmdbGenre } from "@/api/tmdb";
 
 
@@ -17,6 +16,7 @@ import { getGenres, TmdbGenre } from "@/api/tmdb";
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<MoviePreview[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [filters, setFilters] = useState<FilterOptions>({
     genres: [],
@@ -56,11 +56,6 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [currentScreen]);
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      setCurrentScreen('search');
-    }
-  };
 
   useEffect(() => {
     async function loadTrending() {
@@ -77,6 +72,24 @@ export default function App() {
 
     loadTrending();
   }, [genreMap]);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        const results = await loadSearchResults(searchQuery);
+        setSearchResults(results);
+      } catch (err) {
+        console.error("Search failed:", err);
+      }
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
 
   useEffect(() => {
     async function loadGenres() {
@@ -97,8 +110,8 @@ export default function App() {
 
   const availableYears = useMemo(() => {
     const years = trendingMovies
-        .map(m => m.year)
-        .filter(y => y > 0);
+      .map(m => m.year)
+      .filter(y => y > 0);
 
     return Array.from(new Set(years)).sort((a, b) => b - a);
   }, [trendingMovies]);
@@ -108,23 +121,28 @@ export default function App() {
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
-    if (value.trim() === '') {
-      setCurrentScreen('home');
-    } else {
-      setCurrentScreen('search');
-    }
   };
 
-  const handleSelectMovie = (movie: Movie) => {
+  const handleSelectTrendingMovie = (
+    movie: Movie
+  ) => {
     setSelectedMovie(movie);
     setCurrentScreen('details');
   };
 
+  const handleSelectSearchResult = async (
+    preview: MoviePreview
+  ) => {
+    const movie = await loadMovieDetails(preview.id);
+
+    console.log(movie);
+
+    setSelectedMovie(movie);
+    setCurrentScreen('details')
+  };
+
   const handleBack = () => {
     if (currentScreen === 'details') {
-      setCurrentScreen(searchQuery.trim() ? 'search' : 'home');
-    } else if (currentScreen === 'search') {
-      setSearchQuery('');
       setCurrentScreen('home');
     }
   };
@@ -186,40 +204,15 @@ export default function App() {
     [trendingMovies, applyFilters]
   );
 
-  // Filter movies based on search
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase();
-    const matches = trendingMovies.filter(movie =>
-        movie.title.toLowerCase().includes(query) ||
-        movie.director.toLowerCase().includes(query)
-    );
-    return applyFilters(matches);
-  }, [searchQuery, applyFilters, trendingMovies]);
-
   // Screen routing
   if (currentScreen === 'details' && selectedMovie) {
     return <MovieDetailsScreen movie={selectedMovie} onBack={handleBack} enabledRatings={enabledRatings} />;
   }
 
-  if (currentScreen === 'search') {
-    return (
-      <SearchResultsScreen
-        searchQuery={searchQuery}
-        results={searchResults}
-        onBack={handleBack}
-        onSelectMovie={handleSelectMovie}
-        onSearchChange={handleSearchChange}
-        enabledRatings={enabledRatings}
-      />
-    );
-  }
-
-  // Home screen
+  //  Home screen
   return (
     <div className="min-h-screen bg-background">
       <Header
-        onSearchFocus={handleSearch}
         searchValue={searchQuery}
         onSearchChange={handleSearchChange}
         enabledRatings={enabledRatings}
@@ -229,6 +222,24 @@ export default function App() {
         onSignIn={() => signIn('github')}
         onSignOut={signOut}
       />
+
+      {/* Temorarily search show */}
+
+      {searchResults.length > 0 && (
+          <div className="px-6 py-2">
+            <div className="max-w-7xl mx-auto">
+              {searchResults.map((movie) => (
+                  <button
+                      key={movie.id}
+                      onClick={() => handleSelectSearchResult(movie)}
+                      className="block"
+                  >
+                    {movie.title} ({movie.year})
+                  </button>
+              ))}
+            </div>
+          </div>
+      )}
 
       <main className="px-6 py-6 pb-10">
         <div className="max-w-7xl mx-auto">
@@ -260,7 +271,7 @@ export default function App() {
                 year={movie.year}
                 ratings={movie.ratings}
                 posterUrl={movie.posterUrl}
-                onClick={() => handleSelectMovie(movie)}
+                onClick={() => handleSelectTrendingMovie(movie)}
                 enabledRatings={enabledRatings}
               />
             ))}
