@@ -4,36 +4,35 @@ export interface Rating {
   metacritic: number;
 }
 
-export interface Movie {
+export interface BasicMovie {
   id: number;
   title: string;
   year: number;
+  posterUrl: string;
+  genre: string[];
+}
+
+export interface TrendingMovie extends BasicMovie {
   director: string;
+  ratings: Rating;
+  imdbId: string | null;
+  retryNeeded?: boolean;
+}
+
+export interface Movie extends TrendingMovie {
   duration: number;
-  rating: string;
+  ageRating: string;
   views: string;
   summary: string;
-  genre: string[];
   cast: string[];
   language: string;
   country: string;
-  ratings: Rating;
-  posterUrl: string;
-  imdbId: string | null;
-  retryNeeded?: boolean;
 }
 
 export interface EnabledRatings {
   imdb: boolean;
   rottenTomatoes: boolean;
   metacritic: boolean;
-}
-
-export interface MoviePreview {
-  id: number;
-  title: string;
-  year: number;
-  posterUrl: string;
 }
 
 export type Screen = 'home' | 'details';

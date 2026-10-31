@@ -1,12 +1,5 @@
-import {Movie, MoviePreview} from "../models/movie";
+import {BasicMovie} from "../models/movie";
 
-
-export interface TmdbMovieDetails {
-    runtime: number;
-    overview: string;
-    original_language: string;
-    origin_country: string[];
-}
 
 export interface TmdbExternalIdsResponse {
     imdb_id: string | null;
@@ -17,7 +10,14 @@ export interface SafeExternalIdsResponse
     retryNeeded?: boolean;
 }
 
-export interface TmdbTrendingMovie {
+export interface TmdbMovieDetails {
+    runtime: number;
+    overview: string;
+    original_language: string;
+    origin_country: string[];
+}
+
+export interface TmdbBasicMovie {
     id: number;
     title: string;
     release_date: string;
@@ -25,16 +25,9 @@ export interface TmdbTrendingMovie {
     genre_ids: number[];
 }
 
-export interface TmdbSearchMovie {
-    id: number;
-    title: string;
-    release_date: string;
-    poster_path: string | null;
-}
-
 export interface TmdbSearchResponse
 {
-    results: TmdbSearchMovie[];
+    results: TmdbBasicMovie[];
 }
 
 export interface TmdbCrewMember {
@@ -160,49 +153,17 @@ export async function safeGetExternalIds(
 // MAPPING (TMDB → Movie)
 // -------------------------------------------------------------
 
-export function mapTmdbMovie(tmdb: TmdbTrendingMovie): Movie {
-    return {
-        id: tmdb.id,
-        title: tmdb.title,
-        year: parseInt(tmdb.release_date?.slice(0, 4)) || 0,
-
-        // TMDB-only fields (placeholders until enrichment)
-        director: "Unknown",
-        duration: 0,
-        rating: "N/A",
-        views: "0M",
-        summary: "",
-        cast: [],
-        language: "",
-        country: "",
-        imdbId: null,
-
-        // Ratings will be filled by OMDB in movies.ts
-        ratings: {
-            imdb: 0,
-            rottenTomatoes: 0,
-            metacritic: 0,
-        },
-
-        posterUrl: tmdb.poster_path
-            ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}`
-            : "",
-
-        genre: tmdb.genre_ids?.map((id: number) => id.toString()) || [],
-    };
-}
-
-export function mapTmdbSearchMovie(
-    tmdb: TmdbSearchMovie
-): MoviePreview {
+export function mapTmdbBasicMovie(
+    tmdb: TmdbBasicMovie
+): BasicMovie {
     return {
         id: tmdb.id,
         title: tmdb.title,
         year: parseInt(
-            tmdb.release_date?.slice(0, 4)
-        ) || 0,
+            tmdb.release_date?.slice(0, 4)) || 0,
         posterUrl: tmdb.poster_path
             ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}`
-            : ""
+            : "",
+        genre: tmdb.genre_ids?.map((id: number) => id.toString()) || [],
     };
 }
