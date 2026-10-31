@@ -7,10 +7,7 @@ import { BasicMovie, TrendingMovie, Movie, EnabledRatings, Screen } from './mode
 import { useAuth } from './controllers/AuthProvider';
 import { loadTrendingMovies, loadSearchResults, loadMovieDetails, setGenreMap as setMovieGenreMap } from "@/api/movies";
 import { getGenres, TmdbGenre } from "@/api/tmdb";
-
-
-
-
+import { SearchDropdown} from "@/views/components/SearchDropdown";
 
 
 export default function App() {
@@ -214,25 +211,16 @@ export default function App() {
         authLoading={loading}
         onSignIn={() => signIn('github')}
         onSignOut={signOut}
+        searchDropdown={
+            searchResults.length > 0 && (
+                <SearchDropdown
+                    results={searchResults}
+                    onSelectMovie={handleSelectSearchResult}
+                />
+            )
+        }
       />
 
-      {/* Temorarily search show */}
-
-      {searchResults.length > 0 && (
-          <div className="px-6 py-2">
-            <div className="max-w-7xl mx-auto">
-              {searchResults.map((movie) => (
-                  <button
-                      key={movie.id}
-                      onClick={() => handleSelectSearchResult(movie)}
-                      className="block"
-                  >
-                    {movie.title} ({movie.year})
-                  </button>
-              ))}
-            </div>
-          </div>
-      )}
 
       <main className="px-6 py-6 pb-10">
         <div className="max-w-7xl mx-auto">

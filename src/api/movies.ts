@@ -264,7 +264,7 @@ export async function loadSearchResults(
             ...movie,
             genre: mapGenres(movie.genre)
         }))
-        .slice(0, 10)
+        .slice(0, 5)
 }
 
 export async function loadMovieDetails(
