@@ -22,7 +22,6 @@ export interface TrendingMovie extends BasicMovie {
 export interface Movie extends TrendingMovie {
   duration: number;
   ageRating: string;
-  views: string;
   summary: string;
   cast: string[];
   language: string;

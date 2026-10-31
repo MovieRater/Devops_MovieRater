@@ -53,6 +53,19 @@ export interface TmdbGenreResponse {
     genres: TmdbGenre[];
 }
 
+export interface TmdbReleaseDate {
+    certification: string;
+}
+
+export interface TmdbReleaseCountry {
+    iso_3166_1: string;
+    release_dates: TmdbReleaseDate[];
+}
+
+export interface TmdbReleaseDatesResponse {
+    results: TmdbReleaseCountry[];
+}
+
 // -------------------------------------------------------------
 // CONFIG
 // -------------------------------------------------------------
@@ -124,6 +137,13 @@ export async function searchMovies(
 export async function getGenres(): Promise<TmdbGenreResponse> {
     return tmdbFetch("genre/movie/list");
 }
+
+export async function getMovieReleaseDates(
+    id: number
+): Promise<TmdbReleaseDatesResponse> {
+    return tmdbFetch(`movie/${id}/release_dates`);
+}
+
 
 // -------------------------------------------------------------
 // SAFE WRAPPER FOR EXTERNAL IDS (RETRY DETECTION)

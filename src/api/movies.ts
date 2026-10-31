@@ -3,15 +3,20 @@ import {
     getMovieCredits,
     safeGetExternalIds,
     TmdbCrewMember,
+    TmdbCastMember,
     SafeExternalIdsResponse,
-    mapTmdbBasicMovie
+    mapTmdbBasicMovie,
+    searchMovies,
+    getMovieDetails,
+    getMovieReleaseDates
 } from "./tmdb";
 
 import { getOmdbRatingsCached } from "./omdb";
 
 import {
     BasicMovie,
-    TrendingMovie
+    TrendingMovie,
+    Movie
 } from "@/models/movie";
 
 import {
@@ -20,6 +25,24 @@ import {
     isCacheExpired,
     updateCacheTimestamp
 } from "./cache";
+
+let genreMap: Record<number, string> = {};
+
+export function setGenreMap(
+    map: Record<number, string>
+) {
+    genreMap = map;
+}
+
+function mapGenres(
+    genres: string[]
+): string[] {
+    return genres.map(
+        genreId =>
+            genreMap[Number(genreId)]
+            || "Unknow"
+    )
+}
 
 
 // -------------------------------------------------------------
@@ -105,6 +128,53 @@ export async function buildTrendingMovie(movie: BasicMovie): Promise<TrendingMov
     return enriched;
 }
 
+export async function buildMovie(
+    movie: BasicMovie | TrendingMovie
+): Promise<Movie> {
+
+    const trendingMovie =
+        "ratings" in movie
+            ? movie
+            : await buildTrendingMovie(movie)
+
+    const [details, credits, releaseDates] =
+        await Promise.all([
+            getMovieDetails(trendingMovie.id),
+            getMovieCredits(trendingMovie.id),
+            getMovieReleaseDates(trendingMovie.id)
+        ]);
+
+    const cast =
+        credits.cast
+            ?.slice(0, 10)
+            .map(
+                (c: TmdbCastMember) => c.name
+            ) || [];
+
+    const usRelease =
+        releaseDates.results.find(
+            r => r.iso_3166_1 === "US"
+        );
+
+    const ageRating =
+        usRelease?.release_dates.find(
+            r => r.certification
+        )?.certification || "N/A";
+
+
+    return {
+        ...trendingMovie,
+
+        duration: details.runtime || 0,
+        summary: details.overview || "",
+        cast,
+        language: details.original_language || "",
+        country: details.origin_country?.[0] || "",
+        ageRating
+    };
+}
+
+
 
 // -------------------------------------------------------------
 // TRENDING CACHE CONFIG
@@ -160,7 +230,13 @@ export async function loadTrendingMovies(): Promise<TrendingMovie[]> {
     const tmdbTrending = await getTrendingMovies();
 
     // 3. Map TMDB → Movie
-    const mapped = tmdbTrending.results.map(mapTmdbBasicMovie);
+    const mapped =
+        tmdbTrending.results
+            .map(mapTmdbBasicMovie)
+            .map(movie => ({
+                ...movie,
+                genre: mapGenres(movie.genre)
+            }));
 
     // 4. Build complete movies (TMDB + OMDB)
     const finalMovies = await Promise.all(mapped.map(buildTrendingMovie));
@@ -170,4 +246,31 @@ export async function loadTrendingMovies(): Promise<TrendingMovie[]> {
 
     return finalMovies;
 }
+
+export async function loadSearchResults(
+    query: string
+): Promise<BasicMovie[]> {
+
+    if (!query.trim()) {
+        return [];
+    }
+
+    const results =
+        await searchMovies(query);
+
+    return results.results
+        .map(mapTmdbBasicMovie)
+        .map(movie => ({
+            ...movie,
+            genre: mapGenres(movie.genre)
+        }))
+        .slice(0, 10)
+}
+
+export async function loadMovieDetails(
+    movie: BasicMovie | TrendingMovie
+): Promise<Movie> {
+    return buildMovie(movie);
+}
+
 

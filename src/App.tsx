@@ -3,9 +3,9 @@ import { Header } from './views/components/Header';
 import { RatingCard } from './views/components/RatingCard';
 import { MovieDetailsScreen } from './views/screens/MovieDetailsScreen';
 import { FilterBar, FilterOptions } from './views/components/FilterBar';
-import { Movie, MoviePreview, EnabledRatings, Screen } from './models/movie';
+import { BasicMovie, TrendingMovie, Movie, EnabledRatings, Screen } from './models/movie';
 import { useAuth } from './controllers/AuthProvider';
-import { loadTrendingMovies, loadSearchResults, loadMovieDetails } from "@/api/movies";
+import { loadTrendingMovies, loadSearchResults, loadMovieDetails, setGenreMap as setMovieGenreMap } from "@/api/movies";
 import { getGenres, TmdbGenre } from "@/api/tmdb";
 
 
@@ -16,13 +16,13 @@ import { getGenres, TmdbGenre } from "@/api/tmdb";
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<MoviePreview[]>([]);
+  const [searchResults, setSearchResults] = useState<BasicMovie[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [filters, setFilters] = useState<FilterOptions>({
     genres: [],
     years: [],
     minRating: 0,
-    sortBy: 'views',
+    sortBy: 'year',
     sortOrder: 'desc'
   });
   const [enabledRatings, setEnabledRatings] = useState<EnabledRatings>({
@@ -31,7 +31,7 @@ export default function App() {
     metacritic: true
   });
   const { user, loading, signIn, signOut } = useAuth();
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
+  const [trendingMovies, setTrendingMovies] = useState<TrendingMovie[]>([]);
   const [availableGenres, setAvailableGenres] = useState<string[]>([]);
   const [genreMap, setGenreMap] = useState<Record<number, string>>({});
 
@@ -61,13 +61,7 @@ export default function App() {
     async function loadTrending() {
       const movies = await loadTrendingMovies();
 
-      // Convert genre IDs → names using genreMap
-      const moviesWithGenres = movies.map(m => ({
-        ...m,
-        genre: m.genre.map(id => genreMap[Number(id)] || "Unknown")
-      }));
-
-      setTrendingMovies(moviesWithGenres);
+      setTrendingMovies(movies);
     }
 
     loadTrending();
@@ -101,6 +95,7 @@ export default function App() {
       });
 
       setGenreMap(map);
+      setMovieGenreMap(map);
       setAvailableGenres(data.genres.map((g: TmdbGenre) => g.name));
     }
 
@@ -123,17 +118,21 @@ export default function App() {
     setSearchQuery(value);
   };
 
-  const handleSelectTrendingMovie = (
-    movie: Movie
+  const handleSelectTrendingMovie = async (
+    movie: TrendingMovie
   ) => {
-    setSelectedMovie(movie);
+
+    const fullMovie =
+        await loadMovieDetails(movie);
+
+    setSelectedMovie(fullMovie);
     setCurrentScreen('details');
   };
 
   const handleSelectSearchResult = async (
-    preview: MoviePreview
+    preview: BasicMovie
   ) => {
-    const movie = await loadMovieDetails(preview.id);
+    const movie = await loadMovieDetails(preview);
 
     console.log(movie);
 
@@ -148,7 +147,7 @@ export default function App() {
   };
 
   // Apply filters and sorting
-  const applyFilters = useCallback((movies: Movie[]) => {
+  const applyFilters = useCallback((movies: TrendingMovie[]) => {
     let filtered = [...movies];
 
     if (filters.genres.length > 0) {
@@ -184,12 +183,6 @@ export default function App() {
         case 'title':
           comparison = a.title.localeCompare(b.title);
           break;
-        case 'views': {
-          const aViews = parseFloat(a.views?.replace('M', ''));
-          const bViews = parseFloat(b.views?.replace('M', ''));
-          comparison = aViews - bViews;
-          break;
-        }
       }
 
       return filters.sortOrder === 'desc' ? -comparison : comparison;
