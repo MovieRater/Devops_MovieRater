@@ -4,10 +4,11 @@ import { RatingCard } from './views/components/RatingCard';
 import { SearchResultsScreen } from './views/screens/SearchResultsScreen';
 import { MovieDetailsScreen } from './views/screens/MovieDetailsScreen';
 import { FilterBar, FilterOptions } from './views/components/FilterBar';
-import { Movie, EnabledRatings, Screen } from './models/movie';
+import { Movie, Screen } from './models/movie';
 import { useAuth } from './controllers/AuthProvider';
 import { loadTrendingMovies } from "@/api/movies";
 import { getGenres, TmdbGenre } from "@/api/tmdb";
+import { useDisplayPrefsStore } from './controllers/useDisplayPrefsStore';
 
 
 
@@ -25,31 +26,12 @@ export default function App() {
     sortBy: 'views',
     sortOrder: 'desc'
   });
-  const [enabledRatings, setEnabledRatings] = useState<EnabledRatings>({
-    imdb: true,
-    rottenTomatoes: true,
-    metacritic: true
-  });
+  const enabledRatings = useDisplayPrefsStore((s) => s.enabledRatings);
+  const setEnabledRatings = useDisplayPrefsStore((s) => s.setEnabledRatings);
   const { user, loading, signIn, signOut } = useAuth();
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
   const [availableGenres, setAvailableGenres] = useState<string[]>([]);
   const [genreMap, setGenreMap] = useState<Record<number, string>>({});
-
-
-
-  // Load enabled ratings from localStorage on mount
-  useEffect(() => {
-    const savedRatings = localStorage.getItem('enabledRatings');
-    if (savedRatings) {
-      setEnabledRatings(JSON.parse(savedRatings));
-    }
-  }, []);
-
-  // Save enabled ratings to localStorage when changed
-  const handleRatingsChange = (newRatings: EnabledRatings) => {
-    setEnabledRatings(newRatings);
-    localStorage.setItem('enabledRatings', JSON.stringify(newRatings));
-  };
 
   // Scroll to top when screen changes
   useEffect(() => {
@@ -223,7 +205,7 @@ export default function App() {
         searchValue={searchQuery}
         onSearchChange={handleSearchChange}
         enabledRatings={enabledRatings}
-        onRatingsChange={handleRatingsChange}
+        onRatingsChange={setEnabledRatings}
         user={user}
         authLoading={loading}
         onSignIn={() => signIn('github')}
