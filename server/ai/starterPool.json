@@ -1,0 +1,558 @@
+[
+ {
+  "id": 278,
+  "title": "The Shawshank Redemption",
+  "year": 1994,
+  "genres": [
+   "Drama",
+   "Crime"
+  ],
+  "votes": 31772,
+  "poster": "/9cqNxx0GxF0bflZmeSMuL5tnGzr.jpg"
+ },
+ {
+  "id": 13,
+  "title": "Forrest Gump",
+  "year": 1994,
+  "genres": [
+   "Comedy",
+   "Drama",
+   "Romance"
+  ],
+  "votes": 30823,
+  "poster": "/saHP97rTPS5eLmrLQEcANmKrsFl.jpg"
+ },
+ {
+  "id": 597,
+  "title": "Titanic",
+  "year": 1997,
+  "genres": [
+   "Drama",
+   "Romance"
+  ],
+  "votes": 28016,
+  "poster": "/9xjZS2rlVxm8SFx8kPC3aIGCOYQ.jpg"
+ },
+ {
+  "id": 489,
+  "title": "Good Will Hunting",
+  "year": 1997,
+  "genres": [
+   "Drama"
+  ],
+  "votes": 14543,
+  "poster": "/z2FnLKpFi1HPO7BEJxdkv6hpJSU.jpg"
+ },
+ {
+  "id": 238,
+  "title": "The Godfather",
+  "year": 1972,
+  "genres": [
+   "Drama",
+   "Crime"
+  ],
+  "votes": 23913,
+  "poster": "/3bhkrj58Vtu7enYsRolD1fZdja1.jpg"
+ },
+ {
+  "id": 680,
+  "title": "Pulp Fiction",
+  "year": 1994,
+  "genres": [
+   "Thriller",
+   "Crime",
+   "Comedy"
+  ],
+  "votes": 31251,
+  "poster": "/vQWk5YBFWF4bZaofAbv0tShwBvQ.jpg"
+ },
+ {
+  "id": 155,
+  "title": "The Dark Knight",
+  "year": 2008,
+  "genres": [
+   "Action",
+   "Thriller",
+   "Crime"
+  ],
+  "votes": 37227,
+  "poster": "/qJ2tW6WMUDux911r6m7haRef0WH.jpg"
+ },
+ {
+  "id": 807,
+  "title": "Se7en",
+  "year": 1995,
+  "genres": [
+   "Crime",
+   "Mystery",
+   "Thriller"
+  ],
+  "votes": 24144,
+  "poster": "/191nKfP0ehp3uIvWqgPbFmI4lv9.jpg"
+ },
+ {
+  "id": 274,
+  "title": "The Silence of the Lambs",
+  "year": 1991,
+  "genres": [
+   "Crime",
+   "Thriller",
+   "Drama"
+  ],
+  "votes": 18797,
+  "poster": "/uS9m8OBk1A8eM9I042bx8XXpqAq.jpg"
+ },
+ {
+  "id": 496243,
+  "title": "Parasite",
+  "year": 2019,
+  "genres": [
+   "Comedy",
+   "Thriller",
+   "Drama"
+  ],
+  "votes": 21640,
+  "poster": "/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg"
+ },
+ {
+  "id": 11,
+  "title": "Star Wars",
+  "year": 1977,
+  "genres": [
+   "Adventure",
+   "Action",
+   "Science Fiction"
+  ],
+  "votes": 23122,
+  "poster": "/fai0rspsNeJCS69wHNjOdWxcI7P.jpg"
+ },
+ {
+  "id": 105,
+  "title": "Back to the Future",
+  "year": 1985,
+  "genres": [
+   "Adventure",
+   "Comedy",
+   "Science Fiction"
+  ],
+  "votes": 22713,
+  "poster": "/vN5B5WgYscRGcQpVhHl6p9DDTP0.jpg"
+ },
+ {
+  "id": 329,
+  "title": "Jurassic Park",
+  "year": 1993,
+  "genres": [
+   "Adventure",
+   "Science Fiction"
+  ],
+  "votes": 18570,
+  "poster": "/d9mtMGQDLANKieb9PbD3yK7xxzo.jpg"
+ },
+ {
+  "id": 603,
+  "title": "The Matrix",
+  "year": 1999,
+  "genres": [
+   "Action",
+   "Science Fiction"
+  ],
+  "votes": 29160,
+  "poster": "/dXNAPwY7VrqMAo51EKhhCJfaGb5.jpg"
+ },
+ {
+  "id": 27205,
+  "title": "Inception",
+  "year": 2010,
+  "genres": [
+   "Action",
+   "Science Fiction",
+   "Crime"
+  ],
+  "votes": 40653,
+  "poster": "/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg"
+ },
+ {
+  "id": 157336,
+  "title": "Interstellar",
+  "year": 2014,
+  "genres": [
+   "Adventure",
+   "Drama",
+   "Science Fiction"
+  ],
+  "votes": 41784,
+  "poster": "/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg"
+ },
+ {
+  "id": 19995,
+  "title": "Avatar",
+  "year": 2009,
+  "genres": [
+   "Science Fiction",
+   "Action",
+   "Adventure"
+  ],
+  "votes": 34968,
+  "poster": "/gKY6q7SjCkAU6FqvqWybDYgUKIF.jpg"
+ },
+ {
+  "id": 862,
+  "title": "Toy Story",
+  "year": 1995,
+  "genres": [
+   "Family",
+   "Comedy",
+   "Animation",
+   "Adventure"
+  ],
+  "votes": 20789,
+  "poster": "/uXDfjJbdP4ijW5hWSBrPrlKpxab.jpg"
+ },
+ {
+  "id": 8587,
+  "title": "The Lion King",
+  "year": 1994,
+  "genres": [
+   "Animation",
+   "Family",
+   "Drama"
+  ],
+  "votes": 20371,
+  "poster": "/sKCr78MXSLixwmZ8DyJLrpMsd15.jpg"
+ },
+ {
+  "id": 129,
+  "title": "Spirited Away",
+  "year": 2001,
+  "genres": [
+   "Animation",
+   "Family",
+   "Fantasy"
+  ],
+  "votes": 19180,
+  "poster": "/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg"
+ },
+ {
+  "id": 808,
+  "title": "Shrek",
+  "year": 2001,
+  "genres": [
+   "Animation",
+   "Comedy",
+   "Fantasy",
+   "Adventure",
+   "Family"
+  ],
+  "votes": 19551,
+  "poster": "/iB64vpL3dIObOtMZgX3RqdVdQDc.jpg"
+ },
+ {
+  "id": 109445,
+  "title": "Frozen",
+  "year": 2013,
+  "genres": [
+   "Animation",
+   "Family",
+   "Adventure",
+   "Fantasy"
+  ],
+  "votes": 18054,
+  "poster": "/itAKcobTYGpYT8Phwjd8c9hleTo.jpg"
+ },
+ {
+  "id": 137,
+  "title": "Groundhog Day",
+  "year": 1993,
+  "genres": [
+   "Romance",
+   "Fantasy",
+   "Comedy"
+  ],
+  "votes": 9323,
+  "poster": "/gCgt1WARPZaXnq523ySQEUKinCs.jpg"
+ },
+ {
+  "id": 8467,
+  "title": "Dumb and Dumber",
+  "year": 1994,
+  "genres": [
+   "Comedy"
+  ],
+  "votes": 7040,
+  "poster": "/4LdpBXiCyGKkR8FGHgjKlphrfUc.jpg"
+ },
+ {
+  "id": 10625,
+  "title": "Mean Girls",
+  "year": 2004,
+  "genres": [
+   "Drama",
+   "Comedy"
+  ],
+  "votes": 9778,
+  "poster": "/2ZkuQXvVhh45uSvkBej4S7Ix1NJ.jpg"
+ },
+ {
+  "id": 8363,
+  "title": "Superbad",
+  "year": 2007,
+  "genres": [
+   "Comedy"
+  ],
+  "votes": 8491,
+  "poster": "/ek8e8txUyUwd2BNqj6lFEerJfbq.jpg"
+ },
+ {
+  "id": 18785,
+  "title": "The Hangover",
+  "year": 2009,
+  "genres": [
+   "Comedy"
+  ],
+  "votes": 18711,
+  "poster": "/A0uS9rHR56FeBtpjVki16M5xxSW.jpg"
+ },
+ {
+  "id": 120467,
+  "title": "The Grand Budapest Hotel",
+  "year": 2014,
+  "genres": [
+   "Comedy",
+   "Drama"
+  ],
+  "votes": 16709,
+  "poster": "/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg"
+ },
+ {
+  "id": 694,
+  "title": "The Shining",
+  "year": 1980,
+  "genres": [
+   "Horror",
+   "Thriller"
+  ],
+  "votes": 19644,
+  "poster": "/uAR0AWqhQL1hQa69UDEbb2rE5Wx.jpg"
+ },
+ {
+  "id": 4232,
+  "title": "Scream",
+  "year": 1996,
+  "genres": [
+   "Crime",
+   "Horror",
+   "Mystery"
+  ],
+  "votes": 8390,
+  "poster": "/lr9ZIrmuwVmZhpZuTCW8D9g0ZJe.jpg"
+ },
+ {
+  "id": 419430,
+  "title": "Get Out",
+  "year": 2017,
+  "genres": [
+   "Mystery",
+   "Thriller",
+   "Horror"
+  ],
+  "votes": 19602,
+  "poster": "/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg"
+ },
+ {
+  "id": 346364,
+  "title": "It",
+  "year": 2017,
+  "genres": [
+   "Horror",
+   "Thriller",
+   "Drama"
+  ],
+  "votes": 20860,
+  "poster": "/9E2y5Q7WlCVNEhP5GiVTjhEhx1o.jpg"
+ },
+ {
+  "id": 114,
+  "title": "Pretty Woman",
+  "year": 1990,
+  "genres": [
+   "Romance",
+   "Comedy"
+  ],
+  "votes": 9292,
+  "poster": "/oVKX1Pt1q7jXTkTk51mu2S0sAB0.jpg"
+ },
+ {
+  "id": 194,
+  "title": "Amélie",
+  "year": 2001,
+  "genres": [
+   "Comedy",
+   "Romance"
+  ],
+  "votes": 12803,
+  "poster": "/nSxDa3M9aMvGVLoItzWTepQ5h5d.jpg"
+ },
+ {
+  "id": 11036,
+  "title": "The Notebook",
+  "year": 2004,
+  "genres": [
+   "Romance",
+   "Drama"
+  ],
+  "votes": 13028,
+  "poster": "/rNzQyW4f8B8cQeg7Dgj3n6eT5k9.jpg"
+ },
+ {
+  "id": 11631,
+  "title": "Mamma Mia!",
+  "year": 2008,
+  "genres": [
+   "Comedy",
+   "Romance"
+  ],
+  "votes": 7218,
+  "poster": "/xYLiCWmAMHJubx5jNZ7HuXKjAbV.jpg"
+ },
+ {
+  "id": 313369,
+  "title": "La La Land",
+  "year": 2016,
+  "genres": [
+   "Comedy",
+   "Drama",
+   "Romance"
+  ],
+  "votes": 18699,
+  "poster": "/uDO8zWDhfWwoFdKS4fzkUJt0Rf0.jpg"
+ },
+ {
+  "id": 8966,
+  "title": "Twilight",
+  "year": 2008,
+  "genres": [
+   "Fantasy",
+   "Drama",
+   "Romance"
+  ],
+  "votes": 14837,
+  "poster": "/3Gkb6jm6962ADUPaCBqzz9CTbn9.jpg"
+ },
+ {
+  "id": 85,
+  "title": "Raiders of the Lost Ark",
+  "year": 1981,
+  "genres": [
+   "Adventure",
+   "Action"
+  ],
+  "votes": 14184,
+  "poster": "/ceG9VzoRAVGwivFU403Wc3AHRys.jpg"
+ },
+ {
+  "id": 562,
+  "title": "Die Hard",
+  "year": 1988,
+  "genres": [
+   "Action",
+   "Thriller"
+  ],
+  "votes": 12830,
+  "poster": "/7Bjd8kfmDSOzpmhySpEhkUyK2oH.jpg"
+ },
+ {
+  "id": 98,
+  "title": "Gladiator",
+  "year": 2000,
+  "genres": [
+   "Action",
+   "Drama",
+   "Adventure"
+  ],
+  "votes": 21810,
+  "poster": "/aDb548BOkFfI4nFm0kx8A3Ezh7H.jpg"
+ },
+ {
+  "id": 120,
+  "title": "The Lord of the Rings: The Fellowship of the Ring",
+  "year": 2001,
+  "genres": [
+   "Adventure",
+   "Fantasy",
+   "Action"
+  ],
+  "votes": 28787,
+  "poster": "/6oom5QYQ2yQTMJIbnvbkBL9cHo6.jpg"
+ },
+ {
+  "id": 671,
+  "title": "Harry Potter and the Philosopher's Stone",
+  "year": 2001,
+  "genres": [
+   "Adventure",
+   "Fantasy"
+  ],
+  "votes": 30570,
+  "poster": "/wuMc08IPKEatf9rnMNXvIDxqP4W.jpg"
+ },
+ {
+  "id": 22,
+  "title": "Pirates of the Caribbean: The Curse of the Black Pearl",
+  "year": 2003,
+  "genres": [
+   "Adventure",
+   "Fantasy",
+   "Action"
+  ],
+  "votes": 23038,
+  "poster": "/poHwCZeWzJCShH7tOjg8RIoyjcw.jpg"
+ },
+ {
+  "id": 9799,
+  "title": "The Fast and the Furious",
+  "year": 2001,
+  "genres": [
+   "Action",
+   "Crime",
+   "Thriller"
+  ],
+  "votes": 11314,
+  "poster": "/gqY0ITBgT7A82poL9jv851qdnIb.jpg"
+ },
+ {
+  "id": 76341,
+  "title": "Mad Max: Fury Road",
+  "year": 2015,
+  "genres": [
+   "Action",
+   "Adventure",
+   "Science Fiction"
+  ],
+  "votes": 24907,
+  "poster": "/ulcAi4dKpAjHwYGS08vNyx9H6I9.jpg"
+ },
+ {
+  "id": 245891,
+  "title": "John Wick",
+  "year": 2014,
+  "genres": [
+   "Action",
+   "Thriller"
+  ],
+  "votes": 21574,
+  "poster": "/wXqWR7dHncNRbxoEGybEy7QTe9h.jpg"
+ },
+ {
+  "id": 346698,
+  "title": "Barbie",
+  "year": 2023,
+  "genres": [
+   "Comedy",
+   "Adventure",
+   "Fantasy"
+  ],
+  "votes": 11776,
+  "poster": "/iuFNMS8U5cb6xfzi51Dbkovj7vM.jpg"
+ }
+]

@@ -19,6 +19,7 @@
     "test:ci": "npm run test:coverage && npm run test:pipeline"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.5.0",
     "@radix-ui/react-checkbox": "^1.1.4",
     "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-dropdown-menu": "^2.1.6",
