@@ -82,6 +82,7 @@ jobs:
             VITE_OMDB_BASE_URL=${{ env.VITE_OMDB_BASE_URL }}
           cache-from: type=gha,scope=movierater-pr
           cache-to: type=gha,mode=max,scope=movierater-pr
+          no-cache-filters: runtime
 
       - name: Test container and HTTP endpoints
         run: node scripts/docker-smoke.mjs "movierater-ci:$GITHUB_SHA"
