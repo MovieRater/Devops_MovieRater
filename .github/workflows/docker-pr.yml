@@ -20,6 +20,11 @@ jobs:
       # CI uses isolated configuration and mocks; it never needs the production database.
       VITE_SUPABASE_URL: https://example.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+      VITE_TMDB_API_KEY: ci_placeholder_tmdb_key
+      VITE_TMDB_BASE_URL: https://api.themoviedb.org/3
+      VITE_TMDB_IMAGE_BASE: https://image.tmdb.org/t/p/original
+      VITE_OMDB_API_KEY: ci_placeholder_omdb_key
+      VITE_OMDB_BASE_URL: https://www.omdbapi.com/
       DOCKER_SMOKE_CONTAINER: movierater-pr-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout
@@ -70,6 +75,11 @@ jobs:
           build-args: |
             VITE_SUPABASE_URL=${{ env.VITE_SUPABASE_URL }}
             VITE_SUPABASE_PUBLISHABLE_KEY=${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+            VITE_TMDB_API_KEY=${{ env.VITE_TMDB_API_KEY }}
+            VITE_TMDB_BASE_URL=${{ env.VITE_TMDB_BASE_URL }}
+            VITE_TMDB_IMAGE_BASE=${{ env.VITE_TMDB_IMAGE_BASE }}
+            VITE_OMDB_API_KEY=${{ env.VITE_OMDB_API_KEY }}
+            VITE_OMDB_BASE_URL=${{ env.VITE_OMDB_BASE_URL }}
           cache-from: type=gha,scope=movierater-pr
           cache-to: type=gha,mode=max,scope=movierater-pr
 
