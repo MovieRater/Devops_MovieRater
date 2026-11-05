@@ -72,6 +72,7 @@ jobs:
             VITE_SUPABASE_PUBLISHABLE_KEY=${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
           cache-from: type=gha,scope=movierater-pr
           cache-to: type=gha,mode=max,scope=movierater-pr
+          no-cache-filters: runtime
 
       - name: Test container and HTTP endpoints
         run: node scripts/docker-smoke.mjs "movierater-ci:$GITHUB_SHA"
