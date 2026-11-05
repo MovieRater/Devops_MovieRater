@@ -20,6 +20,7 @@ dist-ssr
 *.tsbuildinfo
 .deploy-state/
 .cache/
+.ai-relay/
 
 # Editor directories and files
 .vscode/*

@@ -3,6 +3,7 @@ import { Header } from './views/components/Header';
 import { RatingCard } from './views/components/RatingCard';
 import { SearchResultsScreen } from './views/screens/SearchResultsScreen';
 import { MovieDetailsScreen } from './views/screens/MovieDetailsScreen';
+import { TasteScreen } from './views/screens/TasteScreen';
 import { FilterBar, FilterOptions } from './views/components/FilterBar';
 import { Movie, Screen } from './models/movie';
 import { useAuth } from './controllers/AuthProvider';
@@ -197,7 +198,7 @@ export default function App() {
     );
   }
 
-  // Home screen
+  // Home and Suggest now share the main header.
   return (
     <div className="min-h-screen bg-background">
       <Header
@@ -210,8 +211,12 @@ export default function App() {
         authLoading={loading}
         onSignIn={() => signIn('github')}
         onSignOut={signOut}
+        onOpenTaste={() => setCurrentScreen('taste')}
+        tasteActive={currentScreen === 'taste'}
+        onHome={() => setCurrentScreen('home')}
       />
 
+      {currentScreen === 'taste' ? <TasteScreen /> : (
       <main className="px-6 py-6 pb-10">
         <div className="max-w-7xl mx-auto">
           {/* Hero Section */}
@@ -255,6 +260,7 @@ export default function App() {
           )}
         </div>
       </main>
+      )}
     </div>
   );
 }
