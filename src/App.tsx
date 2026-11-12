@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Header } from './views/components/Header';
 import { RatingCard } from './views/components/RatingCard';
 import { MovieDetailsScreen } from './views/screens/MovieDetailsScreen';
+import { TasteScreen } from './views/screens/TasteScreen';
 import { FilterBar, FilterOptions } from './views/components/FilterBar';
 import { BasicMovie, TrendingMovie, Movie, Screen } from './models/movie';
 import { useAuth } from './controllers/AuthProvider';
@@ -197,6 +198,9 @@ export default function App() {
         authLoading={loading}
         onSignIn={() => signIn('github')}
         onSignOut={signOut}
+        onOpenTaste={() => setCurrentScreen('taste')}
+        tasteActive={currentScreen === 'taste'}
+        onHome={() => setCurrentScreen('home')}
         searchDropdown={
             searchResults.length > 0 && (
                 <SearchDropdown
@@ -207,7 +211,7 @@ export default function App() {
         }
       />
 
-
+    {currentScreen === 'taste' ? <TasteScreen /> : (
       <main className="px-6 py-6 pb-10">
         <div className="max-w-7xl mx-auto">
           {/* Hero Section */}
@@ -251,6 +255,7 @@ export default function App() {
           )}
         </div>
       </main>
+      )}
     </div>
   );
 }
