@@ -176,6 +176,7 @@ jobs:
             VITE_OMDB_BASE_URL=${{ env.VITE_OMDB_BASE_URL }}
           cache-from: type=gha,scope=movierater-publish
           cache-to: type=gha,mode=max,scope=movierater-publish
+          no-cache-filters: runtime
 
       - name: Test the image that will be published
         run: node scripts/docker-smoke.mjs "movierater-ci:$GITHUB_SHA"
