@@ -28,7 +28,7 @@ childProcess.spawnSync = (program, args) => {
   const ok = (stdout = '') => ({ status: 0, stdout, stderr: '' });
   const bad = () => ({ status: 1, stdout: '', stderr: 'fixture failure' });
   if (program === 'docker') {
-    if (args[0] === 'pull') return ok('pulled');
+    if (['pull', 'tag', 'push'].includes(args[0])) return ok();
     if (args[0] === 'image' && args[1] === 'inspect') return ok(JSON.stringify([f.dockerImage]));
     if (args[0] === 'run') return ok(f.webFiles[args.at(-1).replace('/usr/share/nginx/html', '')] || '');
   }
@@ -50,7 +50,7 @@ globalThis.fetch = async (url) => {
   const json = (value) => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } });
   if (parsed.hostname === 'ghcr.io') {
     if (parsed.pathname === '/token') return json({ token: 'fixture-token' });
-    if (parsed.pathname.includes('/manifests/')) return new Response(f.manifest, { headers: { 'docker-content-digest': f.manifestDigest } });
+    if (parsed.pathname.includes('/manifests/')) return new Response(f.manifest, { status: f.manifestStatus || 200, headers: { 'docker-content-digest': f.manifestDigest } });
   }
   if (parsed.hostname === 'api.github.com') {
     if (parsed.pathname.endsWith('/git/ref/heads/main')) return json({ object: { sha: f.mainRevision } });

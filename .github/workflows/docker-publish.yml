@@ -1,59 +1,46 @@
-name: Docker publish
+name: CI / CD
 
 on:
+  pull_request:
   push:
     branches: [main]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the tested image (main or version tags only)
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
+# Tests and PR builds use public placeholders, never the production database.
+env:
+  DOCKER_SMOKE_CONTAINER: movierater-ci-${{ github.run_id }}-${{ github.run_attempt }}
+  VITE_SUPABASE_URL: https://example.supabase.co
+  VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+  VITE_TMDB_API_KEY: ci_placeholder_tmdb_key
+  VITE_TMDB_BASE_URL: https://api.themoviedb.org/3
+  VITE_TMDB_IMAGE_BASE: https://image.tmdb.org/t/p/original
+  VITE_OMDB_API_KEY: ci_placeholder_omdb_key
+  VITE_OMDB_BASE_URL: https://www.omdbapi.com/
+
 jobs:
-  publish:
-    name: Test, scan and publish image
-    if: github.repository == 'MovieRater/Devops_MovieRater' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+  # Continuous integration: validate changes before building or publishing.
+  test:
+    name: Test
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
-    # Only publishing holds this lock; waiting for production approval must not
-    # block later image builds. queue:max preserves pending release tags.
-    # https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
+    timeout-minutes: 30
     concurrency:
-      group: movierater-publish
-      queue: max
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      packages: write
-    env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-      VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
-      VITE_TMDB_BASE_URL: ${{ secrets.VITE_TMDB_BASE_URL }}
-      VITE_TMDB_IMAGE_BASE: ${{ secrets.VITE_TMDB_IMAGE_BASE }}
-      VITE_OMDB_API_KEY: ${{ secrets.VITE_OMDB_API_KEY }}
-      VITE_OMDB_BASE_URL: ${{ secrets.VITE_OMDB_BASE_URL }}
-      DOCKER_SMOKE_CONTAINER: movierater-publish-${{ github.run_id }}-${{ github.run_attempt }}
-    outputs:
-      image_ref: ${{ steps.verify.outputs.image_ref }}
-      revision: ${{ github.sha }}
-      publish_run_id: ${{ github.run_id }}
+      group: test-${{ github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: true
     steps:
-      - name: Checkout
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
 
-      - name: Require public frontend configuration
-        run: |
-          for name in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY VITE_TMDB_API_KEY VITE_TMDB_BASE_URL VITE_TMDB_IMAGE_BASE VITE_OMDB_API_KEY VITE_OMDB_BASE_URL; do
-            if [ -z "${!name}" ]; then
-              echo "::error::Set repository variable $name under Settings > Secrets and variables > Actions > Variables."
-              exit 1
-            fi
-          done
-
-      - name: Set up Node
+      - name: Use Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version-file: .nvmrc
@@ -62,45 +49,99 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Lint and typecheck
+        run: |
+          npm run lint
+          npm run typecheck
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Application coverage and pipeline tests
+      - name: Run tests with coverage
         run: npm run test:ci
 
-      - name: Deployment integration tests
+      - name: Run deployment tests
         run: npm run test:integration
 
-      - name: Install Chromium for browser tests
-        run: npx playwright install --with-deps chromium
-
-      - name: Browser end-to-end tests
-        run: npm run test:e2e
-
-      - name: Build application
-        run: npm run build
-
-      - name: Prepare image name and version tags
-        id: image
+      - name: Run browser tests
         run: |
-          image="ghcr.io/${GITHUB_REPOSITORY,,}"
-          tags=("$image:sha-$GITHUB_SHA")
-          if [ "$GITHUB_REF" = 'refs/heads/main' ]; then
-            tags+=("$image:main" "$image:latest")
-          elif [[ "$GITHUB_REF_NAME" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9A-Za-z.-]+)?$ ]]; then
-            tags+=("$image:$GITHUB_REF_NAME" "$image:${GITHUB_REF_NAME#v}")
-            if [ -z "${BASH_REMATCH[4]}" ]; then
-              tags+=("$image:${BASH_REMATCH[1]}.${BASH_REMATCH[2]}" "$image:${BASH_REMATCH[1]}")
-            fi
-          else
-            echo '::error::Release tags must use vMAJOR.MINOR.PATCH, optionally with a prerelease suffix.'
-            exit 1
-          fi
-          echo "name=$image" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "${tags[@]}" > "$RUNNER_TEMP/movierater-image-tags.txt"
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: ${{ (github.event_name == 'push' || inputs.publish) && 30 || 14 }}
+
+      - name: Upload browser failure reports
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Summarize CI result
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          echo "## CI tests: $RESULT" >> "$GITHUB_STEP_SUMMARY"
+          echo 'See job steps for timings and Artifacts for coverage and browser failure reports.' >> "$GITHUB_STEP_SUMMARY"
+
+  # PR build: the Dockerfile builds the frontend, then HTTP and security are checked.
+  docker:
+    name: Build and test Docker
+    needs: test
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && !inputs.publish)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: docker-pr-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Use Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Build, test and scan Docker image
+        uses: ./.github/actions/docker
+
+  # Continuous delivery: publish the tested image to GHCR, ready for deployment.
+  publish:
+    # This name also verifies existing release records during rollback.
+    name: Test, scan and publish image
+    needs: test
+    if: github.repository == 'MovieRater/Devops_MovieRater' && (github.event_name == 'push' || inputs.publish) && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: movierater-publish
+      queue: max
+      cancel-in-progress: false
+    outputs:
+      image_ref: ${{ steps.release.outputs.image_ref }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Use Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
 
       - name: Log in to GHCR
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
@@ -109,197 +150,43 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Reuse an existing immutable commit image
-        id: existing
+      - name: Prepare release and reuse an existing commit image
+        id: image
         env:
-          IMAGE_NAME: ${{ steps.image.outputs.name }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Distinguish a missing manifest (404) from auth, rate-limit or network errors.
-          cat > "$RUNNER_TEMP/check-ghcr.sh" <<'SCRIPT'
-          manifest_exists() {
-            local token status
-            token=$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
-              --user "$GITHUB_ACTOR:$GHCR_TOKEN" \
-              "https://ghcr.io/token?service=ghcr.io&scope=repository:${GITHUB_REPOSITORY,,}:pull,push") || return 2
-            token=$(printf '%s' "$token" | node -e 'process.stdout.write(JSON.parse(require("node:fs").readFileSync(0,"utf8")).token || "")') || return 2
-            if [ -z "$token" ]; then
-              echo '::error::GHCR did not return a registry token.'
-              return 2
-            fi
-            echo "::add-mask::$token"
-            status=$(curl --silent --show-error --connect-timeout 10 --max-time 30 \
-              --output /dev/null --write-out '%{http_code}' \
-              --header "Authorization: Bearer $token" \
-              --header 'Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' \
-              "https://ghcr.io/v2/${GITHUB_REPOSITORY,,}/manifests/sha-$GITHUB_SHA") || return 2
-            case "$status" in
-              200) return 0 ;;
-              404) return 1 ;;
-              *) echo "::error::GHCR manifest lookup failed (HTTP $status)."; return 2 ;;
-            esac
-          }
-          SCRIPT
-          source "$RUNNER_TEMP/check-ghcr.sh"
-          if manifest_exists; then
-            docker pull "$IMAGE_NAME:sha-$GITHUB_SHA"
-            docker tag "$IMAGE_NAME:sha-$GITHUB_SHA" "movierater-ci:$GITHUB_SHA"
-            echo 'reuse=true' >> "$GITHUB_OUTPUT"
-          else
-            result=$?
-            if [ "$result" -ne 1 ]; then exit 1; fi
-            echo 'reuse=false' >> "$GITHUB_OUTPUT"
-          fi
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY || vars.VITE_TMDB_API_KEY }}
+          VITE_TMDB_BASE_URL: ${{ secrets.VITE_TMDB_BASE_URL || vars.VITE_TMDB_BASE_URL }}
+          VITE_TMDB_IMAGE_BASE: ${{ secrets.VITE_TMDB_IMAGE_BASE || vars.VITE_TMDB_IMAGE_BASE }}
+          VITE_OMDB_API_KEY: ${{ secrets.VITE_OMDB_API_KEY || vars.VITE_OMDB_API_KEY }}
+          VITE_OMDB_BASE_URL: ${{ secrets.VITE_OMDB_BASE_URL || vars.VITE_OMDB_BASE_URL }}
+        run: node scripts/publish-image.mjs prepare
 
-      - name: Set up Docker Buildx
-        if: steps.existing.outputs.reuse != 'true'
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-
-      - name: Build image once
-        if: steps.existing.outputs.reuse != 'true'
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+      - name: Build, test and scan Docker image
+        uses: ./.github/actions/docker
         with:
-          context: .
-          platforms: linux/amd64
-          load: true
-          tags: movierater-ci:${{ github.sha }}
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          build-args: |
-            VITE_SUPABASE_URL=${{ env.VITE_SUPABASE_URL }}
-            VITE_SUPABASE_PUBLISHABLE_KEY=${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
-            VITE_TMDB_API_KEY=${{ env.VITE_TMDB_API_KEY }}
-            VITE_TMDB_BASE_URL=${{ env.VITE_TMDB_BASE_URL }}
-            VITE_TMDB_IMAGE_BASE=${{ env.VITE_TMDB_IMAGE_BASE }}
-            VITE_OMDB_API_KEY=${{ env.VITE_OMDB_API_KEY }}
-            VITE_OMDB_BASE_URL=${{ env.VITE_OMDB_BASE_URL }}
-          cache-from: type=gha,scope=movierater-publish
-          cache-to: type=gha,mode=max,scope=movierater-publish
-
-      - name: Test the image that will be published
-        run: node scripts/docker-smoke.mjs "movierater-ci:$GITHUB_SHA"
-
-      - name: Scan image vulnerabilities
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
-        with:
-          version: v0.69.3
-          scan-type: image
-          image-ref: movierater-ci:${{ github.sha }}
-          scanners: vuln
-          format: json
-          output: trivy-image.json
-          severity: HIGH,CRITICAL
-          exit-code: "0"
-
-      - name: Scan npm dependencies
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
-        env:
-          TRIVY_INCLUDE_DEV_DEPS: "true"
-        with:
-          skip-setup-trivy: true
-          scan-type: fs
-          scan-ref: .
-          skip-dirs: node_modules,dist,.git,.cache,.ci-local-tests
-          scanners: vuln
-          format: json
-          output: trivy-dependencies.json
-          severity: HIGH,CRITICAL
-          exit-code: "0"
-
-      - name: Enforce vulnerability policy
-        run: node scripts/check-vulnerabilities.mjs trivy-image.json trivy-dependencies.json
-
-      - name: Upload vulnerability reports
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: trivy-publish-${{ github.run_id }}
-          path: trivy-*.json
-          if-no-files-found: warn
-          retention-days: 30
-
-      - name: Upload application coverage
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: coverage-publish-${{ github.run_id }}-${{ github.run_attempt }}
-          path: coverage/
-          if-no-files-found: warn
-          retention-days: 30
-
-      - name: Upload browser test failure reports
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: playwright-publish-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            playwright-report/
-            test-results/
-          if-no-files-found: warn
-          retention-days: 7
+          reuse: ${{ steps.image.outputs.reuse }}
+          cache-scope: publish
 
       - name: Publish the tested image without rebuilding
         env:
-          IMAGE_NAME: ${{ steps.image.outputs.name }}
-          REUSED: ${{ steps.existing.outputs.reuse }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # A commit tag may be created once, but never silently overwritten.
-          if [ "$REUSED" != 'true' ]; then
-            source "$RUNNER_TEMP/check-ghcr.sh"
-            if manifest_exists; then
-              echo '::error::Commit image appeared during this run. Rerun to test and reuse it instead of overwriting it.'
-              exit 1
-            else
-              result=$?
-              if [ "$result" -ne 1 ]; then exit 1; fi
-            fi
-          fi
-          publish_main=true
-          if [ "$GITHUB_REF" = 'refs/heads/main' ]; then
-            main_head=$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
-              --header "Authorization: Bearer $GHCR_TOKEN" \
-              --header 'Accept: application/vnd.github+json' \
-              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
-              | node -e 'process.stdout.write(JSON.parse(require("node:fs").readFileSync(0,"utf8")).object.sha)')
-            if [ "$main_head" != "$GITHUB_SHA" ]; then
-              publish_main=false
-              echo 'A newer commit is on main; only publish the immutable commit tag.'
-            fi
-          fi
-          while IFS= read -r tag; do
-            if [ "$REUSED" = 'true' ] && [ "$tag" = "$IMAGE_NAME:sha-$GITHUB_SHA" ]; then
-              continue
-            fi
-            if [ "$publish_main" = 'false' ] && { [ "$tag" = "$IMAGE_NAME:main" ] || [ "$tag" = "$IMAGE_NAME:latest" ]; }; then
-              continue
-            fi
-            docker tag "movierater-ci:$GITHUB_SHA" "$tag"
-            docker push "$tag"
-          done < "$RUNNER_TEMP/movierater-image-tags.txt"
-          {
-            echo '## Published MovieRater image'
-            echo "Commit tag: \`$IMAGE_NAME:sha-$GITHUB_SHA\`"
-            echo '```text'
-            docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "movierater-ci:$GITHUB_SHA"
-            echo '```'
-            echo 'The immutable commit image was tested with the production security settings.'
-            echo 'All CRITICAL and fixable HIGH findings block publication; see the Trivy report artifact.'
-          } >> "$GITHUB_STEP_SUMMARY"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REUSED: ${{ steps.image.outputs.reuse }}
+        run: node scripts/publish-image.mjs publish
 
-      - name: Verify published digest and create approved release record
-        id: verify
+      - name: Verify published digest and record release
+        id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/release.mjs record
 
-      - name: Smoke test the image pulled from GHCR by digest
+      - name: Test the image pulled from GHCR
         env:
-          APPROVED_IMAGE: ${{ steps.verify.outputs.image_ref }}
+          APPROVED_IMAGE: ${{ steps.release.outputs.image_ref }}
         run: node scripts/docker-smoke.mjs "$APPROVED_IMAGE"
 
-      - name: Upload approved release record
+      - name: Upload approved release
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: movierater-release-${{ github.sha }}-${{ github.run_attempt }}
@@ -312,14 +199,11 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Clean up container
-        if: always()
-        run: docker rm --force "$DOCKER_SMOKE_CONTAINER" 2>/dev/null || true
-
+  # Continuous deployment: deploy a verified main release when enabled.
   deploy:
-    name: Deploy approved release
+    name: Deploy
     needs: publish
-    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true' && needs.publish.outputs.image_ref != ''
     permissions:
       contents: read
       packages: read
@@ -327,6 +211,6 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       image_ref: ${{ needs.publish.outputs.image_ref }}
-      revision: ${{ needs.publish.outputs.revision }}
-      publish_run_id: ${{ needs.publish.outputs.publish_run_id }}
+      revision: ${{ github.sha }}
+      publish_run_id: ${{ github.run_id }}
       automatic: true

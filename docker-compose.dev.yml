@@ -20,10 +20,8 @@ services:
       - ./vite.config.ts:/app/vite.config.ts:ro
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./postcss.config.mjs:/app/postcss.config.mjs:ro
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     init: true
     logging:
       driver: json-file
