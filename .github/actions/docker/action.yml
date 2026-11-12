@@ -36,6 +36,7 @@ runs:
           VITE_OMDB_BASE_URL=${{ env.VITE_OMDB_BASE_URL }}
         cache-from: type=gha,scope=movierater-${{ inputs.cache-scope }}
         cache-to: type=gha,mode=max,scope=movierater-${{ inputs.cache-scope }}
+        no-cache-filters: runtime
 
     - name: Test container and HTTP endpoints
       shell: bash

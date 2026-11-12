@@ -1,12 +1,5 @@
-import { Movie } from "../models/movie";
+import {BasicMovie} from "../models/movie";
 
-
-export interface TmdbMovieDetails {
-    runtime: number;
-    overview: string;
-    original_language: string;
-    origin_country: string[];
-}
 
 export interface TmdbExternalIdsResponse {
     imdb_id: string | null;
@@ -17,12 +10,24 @@ export interface SafeExternalIdsResponse
     retryNeeded?: boolean;
 }
 
-export interface TmdbTrendingMovie {
+export interface TmdbMovieDetails {
+    runtime: number;
+    overview: string;
+    original_language: string;
+    origin_country: string[];
+}
+
+export interface TmdbBasicMovie {
     id: number;
     title: string;
     release_date: string;
     poster_path: string | null;
     genre_ids: number[];
+}
+
+export interface TmdbSearchResponse
+{
+    results: TmdbBasicMovie[];
 }
 
 export interface TmdbCrewMember {
@@ -46,6 +51,19 @@ export interface TmdbGenre {
 
 export interface TmdbGenreResponse {
     genres: TmdbGenre[];
+}
+
+export interface TmdbReleaseDate {
+    certification: string;
+}
+
+export interface TmdbReleaseCountry {
+    iso_3166_1: string;
+    release_dates: TmdbReleaseDate[];
+}
+
+export interface TmdbReleaseDatesResponse {
+    results: TmdbReleaseCountry[];
 }
 
 // -------------------------------------------------------------
@@ -110,13 +128,22 @@ export async function getExternalIds(
     return tmdbFetch(`movie/${id}/external_ids`);
 }
 
-export async function searchMovies(query: string) {
+export async function searchMovies(
+    query: string
+): Promise<TmdbSearchResponse> {
     return tmdbFetch(`search/movie?query=${encodeURIComponent(query)}`);
 }
 
 export async function getGenres(): Promise<TmdbGenreResponse> {
     return tmdbFetch("genre/movie/list");
 }
+
+export async function getMovieReleaseDates(
+    id: number
+): Promise<TmdbReleaseDatesResponse> {
+    return tmdbFetch(`movie/${id}/release_dates`);
+}
+
 
 // -------------------------------------------------------------
 // SAFE WRAPPER FOR EXTERNAL IDS (RETRY DETECTION)
@@ -146,34 +173,17 @@ export async function safeGetExternalIds(
 // MAPPING (TMDB → Movie)
 // -------------------------------------------------------------
 
-export function mapTmdbMovie(tmdb: TmdbTrendingMovie): Movie {
+export function mapTmdbBasicMovie(
+    tmdb: TmdbBasicMovie
+): BasicMovie {
     return {
         id: tmdb.id,
         title: tmdb.title,
-        year: parseInt(tmdb.release_date?.slice(0, 4)) || 0,
-
-        // TMDB-only fields (placeholders until enrichment)
-        director: "Unknown",
-        duration: 0,
-        rating: "N/A",
-        views: "0M",
-        summary: "",
-        cast: [],
-        language: "",
-        country: "",
-        imdbId: null,
-
-        // Ratings will be filled by OMDB in movies.ts
-        ratings: {
-            imdb: 0,
-            rottenTomatoes: 0,
-            metacritic: 0,
-        },
-
+        year: parseInt(
+            tmdb.release_date?.slice(0, 4)) || 0,
         posterUrl: tmdb.poster_path
             ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}`
             : "",
-
         genre: tmdb.genre_ids?.map((id: number) => id.toString()) || [],
     };
 }

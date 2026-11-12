@@ -13,7 +13,6 @@ import type { AppUser } from '../../models/user';
 
 
 interface HeaderProps {
-  onSearchFocus?: () => void;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   enabledRatings?: EnabledRatings;
@@ -22,11 +21,12 @@ interface HeaderProps {
   authLoading?: boolean;
   onSignIn?: () => void;
   onSignOut?: () => void;
+  searchDropdown?: React.ReactNode;
 }
 
 export function Header({
-  onSearchFocus, searchValue = '', onSearchChange, enabledRatings, onRatingsChange,
-  user = null, authLoading = false, onSignIn, onSignOut,
+  searchValue = '', onSearchChange, enabledRatings, onRatingsChange,
+  user = null, authLoading = false, onSignIn, onSignOut, searchDropdown
  }: HeaderProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -76,7 +76,7 @@ export function Header({
         </div>
 
         {/* Search bar - centered and prominent */}
-        <div className="flex-1 max-w-2xl mx-auto">
+        <div className="flex-1 max-w-2xl mx-auto relative">
           <div className="bg-secondary/50 rounded-xl border border-border px-4 py-2.5 flex items-center gap-3 hover:border-primary/40 focus-within:border-primary/60 transition-colors">
             <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
             <input
@@ -84,10 +84,10 @@ export function Header({
               placeholder="Search for movies, directors..."
               value={searchValue}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              onFocus={onSearchFocus}
               className="bg-transparent text-foreground placeholder-muted-foreground flex-1 outline-none text-sm min-w-0"
             />
           </div>
+          {searchDropdown}
         </div>
 
         {/* Right controls */}
