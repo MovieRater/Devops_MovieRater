@@ -1,4 +1,4 @@
-import { ArrowLeft, Eye, Film, Clock, Globe } from 'lucide-react';
+import { ArrowLeft, Film, Clock, Globe } from 'lucide-react';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { ImdbLogo } from '../components/logos/ImdbLogo';
 import { RottenTomatoesLogo } from '../components/logos/RottenTomatoesLogo';
@@ -6,7 +6,6 @@ import { MetacriticLogo } from '../components/logos/MetacriticLogo';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '../ui/dialog';
 import { useState, useEffect } from 'react';
 import { Movie, EnabledRatings } from '../../models/movie';
-import {loadMovieDetails} from "@/api/movies";
 
 interface MovieDetailsProps {
   movie: Movie;
@@ -35,28 +34,7 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
   const [fullMovie, setFullMovie] = useState<Movie>(movie);
 
   useEffect(() => {
-    async function load() {
-
-      setFullMovie(movie);
-
-      if (!movie.retryNeeded) {
-        return;
-      }
-
-      try {
-        const fresh = await loadMovieDetails(movie.id);
-
-        setFullMovie({
-          ...movie,
-          ...fresh
-        });
-
-      } catch (err) {
-        console.error("Failed to refresh movie", err);
-      }
-    }
-
-    load();
+    setFullMovie(movie);
   }, [movie]);
 
   const imdbRating = fullMovie.ratings.imdb.toFixed(1);
@@ -161,12 +139,7 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
                   </span>
                   <span>•</span>
                   <span className="px-2 py-0.5 bg-secondary border border-border rounded text-xs font-medium text-foreground">
-                    {fullMovie.rating}
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1.5">
-                    <Eye className="w-3.5 h-3.5" />
-                    {fullMovie.views} views
+                    {fullMovie.ageRating}
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -274,7 +247,7 @@ export function MovieDetailsScreen({ movie, onBack, enabledRatings }: MovieDetai
                 </div>
                 <div>
                   <dt className="text-muted-foreground mb-0.5">Rating</dt>
-                  <dd className="text-foreground">{fullMovie.rating}</dd>
+                  <dd className="text-foreground">{fullMovie.ageRating}</dd>
                 </div>
               </dl>
             </div>
