@@ -78,13 +78,33 @@ Opret disse repository variables på GitHub under
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_TMDB_API_KEY`
+- `VITE_TMDB_BASE_URL`
+- `VITE_TMDB_IMAGE_BASE`
+- `VITE_OMDB_API_KEY`
+- `VITE_OMDB_BASE_URL`
 - `DEPLOY_ENABLED=false`, indtil produktionsserveren er klar.
 
-Pull requests og manuel kørsel af PR-workflowet kører lint, typekontrol,
-app-tests med coverage, Node-tests, deployment-tests, Playwright i Chromium,
-app-build, Docker-build, containerkontrol og sikkerhedsscanning. Fejl stopper
-pipelinen. En ændring på en branch med en åben PR udløser én PR-kontrol.
-Andre branches end `main` har ingen automatisk kontrol uden en PR.
+Workflowet **CI / CD** i `.github/workflows/docker-publish.yml` har en enkel
+rækkefølge med `needs`, som i undervisningseksemplet:
+
+| Job | Hvornår og hvad? |
+| --- | --- |
+| `test` | Lint, typekontrol, tests med coverage, deployment-tests og browser-tests. |
+| `docker` | Efter test på PR: byg Docker-image, kontrollér HTTP og scan for sårbarheder. Publicerer ikke. |
+| `publish` | Efter test på main/versionstags: samme Docker-kontrol, publicering til GHCR og verificering af digest. |
+| `deploy` | Efter publicering på main, når `DEPLOY_ENABLED=true`: kald deployment-workflowet. |
+
+En fejl stopper de efterfølgende jobs. En åben PR udløser én kontrol pr.
+opdatering; andre branches end `main` har ingen automatisk push-kontrol.
+Ved **Run workflow** kan `publish` slås fra for kun at teste og bygge.
+Eksisterende `VITE_` repository secrets virker også og har forrang over variables.
+
+Frontend-buildet køres i Dockerfile, så CI undgår at bygge den samme frontend
+en ekstra gang uden for Docker. Et eksisterende commit-image genbruges stadig.
+Opdelingen i CI, continuous delivery og continuous deployment bygger på
+[Lektion 08](docs/deployment.md#lektion-08). Der findes en oversigt med
+sidereferencer i deploymentvejledningen.
 
 Efter push/merge til `main` eller versionstags publiceres det testede image til
 `ghcr.io/movierater/devops_movierater`. Commit-tags og versionsmærker gør det muligt
@@ -143,7 +163,7 @@ npm run test:e2e
 
 Browser-testene findes i `tests/e2e/`. De bruger syntetiske Supabase-værdier.
 Playwright starter selv en isoleret Vite-server.
-Begge pipelines kører `npm run test:ci` (app-tests med coverage og Node-tests),
+Pipelineens fælles `test`-job kører `npm run test:ci` (app-tests med coverage og Node-tests),
 `npm run test:integration` og `npm run test:e2e`. Coverage gemmes som et
 workflow-artifakt; ved browserfejl gemmes også HTML-rapport og testresultater.
 

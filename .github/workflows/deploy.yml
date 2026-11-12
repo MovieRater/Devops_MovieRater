@@ -45,6 +45,11 @@ jobs:
       cancel-in-progress: false
     env:
       DOCKER_SMOKE_CONTAINER: movierater-deploy-${{ github.run_id }}-${{ github.run_attempt }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST || vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER || vars.DEPLOY_USER }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || vars.DEPLOY_PORT || '22' }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || vars.DEPLOY_PATH || '/opt/movierater' }}
+      DEPLOY_URL: ${{ secrets.DEPLOY_URL || vars.DEPLOY_URL }}
     steps:
       - name: Checkout trusted workflow helpers
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -59,11 +64,6 @@ jobs:
       - name: Prepare pinned SSH identity without connecting
         id: ssh
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/movierater' }}
-          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: node scripts/deploy-remote.mjs setup
@@ -72,11 +72,6 @@ jobs:
         id: previous
         if: inputs.operation == 'rollback'
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/movierater' }}
-          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
           SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
         run: node scripts/deploy-remote.mjs previous
 
@@ -111,38 +106,12 @@ jobs:
           APPROVED_IMAGE: ${{ steps.approved.outputs.image_ref }}
         run: node scripts/docker-smoke.mjs "$APPROVED_IMAGE"
 
-      - name: Scan approved image
+      - name: Scan approved image and dependencies
         if: steps.approved.outputs.skip != 'true'
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        uses: ./.github/actions/scan
         with:
-          version: v0.69.3
-          scan-type: image
-          image-ref: ${{ steps.approved.outputs.image_ref }}
-          scanners: vuln
-          format: json
-          output: trivy-deploy-image.json
-          severity: HIGH,CRITICAL
-          exit-code: "0"
-
-      - name: Scan approved npm dependency lock
-        if: steps.approved.outputs.skip != 'true'
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
-        env:
-          TRIVY_INCLUDE_DEV_DEPS: "true"
-        with:
-          skip-setup-trivy: true
-          scan-type: fs
-          scan-ref: approved-release
-          skip-dirs: approved-release/node_modules,approved-release/dist,approved-release/.git,approved-release/.cache,approved-release/.ci-local-tests
-          scanners: vuln
-          format: json
-          output: trivy-deploy-dependencies.json
-          severity: HIGH,CRITICAL
-          exit-code: "0"
-
-      - name: Enforce current security policy
-        if: steps.approved.outputs.skip != 'true'
-        run: node scripts/check-vulnerabilities.mjs trivy-deploy-image.json trivy-deploy-dependencies.json
+          image: ${{ steps.approved.outputs.image_ref }}
+          source: approved-release
 
       - name: Recheck automatic deployment is still current before SSH
         id: fresh
@@ -156,11 +125,6 @@ jobs:
       - name: Deploy or roll back and verify public HTTPS
         if: steps.approved.outputs.skip != 'true' && steps.fresh.outputs.skip != 'true'
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/movierater' }}
-          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
           SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
           DEPLOY_OPERATION: ${{ inputs.operation || 'deploy' }}
         run: node scripts/deploy-remote.mjs apply
@@ -170,7 +134,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: trivy-deploy-${{ github.run_id }}-${{ github.run_attempt }}
-          path: trivy-deploy-*.json
+          path: trivy-*.json
           if-no-files-found: warn
           retention-days: 30
 

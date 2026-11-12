@@ -1,0 +1,42 @@
+name: Scan image and dependencies
+description: Run Trivy and block all CRITICAL and fixable HIGH vulnerabilities.
+inputs:
+  image:
+    description: Docker image to scan
+    required: true
+  source:
+    description: Directory containing the dependency lockfile
+    default: .
+runs:
+  using: composite
+  steps:
+    - name: Scan image
+      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+      with:
+        version: v0.69.3
+        scan-type: image
+        image-ref: ${{ inputs.image }}
+        scanners: vuln
+        format: json
+        output: trivy-image.json
+        severity: HIGH,CRITICAL
+        exit-code: "0"
+
+    - name: Scan npm dependencies
+      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+      env:
+        TRIVY_INCLUDE_DEV_DEPS: "true"
+      with:
+        skip-setup-trivy: true
+        scan-type: fs
+        scan-ref: ${{ inputs.source }}
+        skip-dirs: ${{ inputs.source }}/node_modules,${{ inputs.source }}/dist,${{ inputs.source }}/.git,${{ inputs.source }}/.cache,${{ inputs.source }}/.ci-local-tests
+        scanners: vuln
+        format: json
+        output: trivy-dependencies.json
+        severity: HIGH,CRITICAL
+        exit-code: "0"
+
+    - name: Enforce vulnerability policy
+      shell: bash
+      run: node scripts/check-vulnerabilities.mjs trivy-image.json trivy-dependencies.json

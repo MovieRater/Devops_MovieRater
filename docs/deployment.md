@@ -6,11 +6,11 @@ Produktionsserveren er endnu ikke tilsluttet. Lad `DEPLOY_ENABLED` være tom ell
 
 ## Pipeline
 
-- Pull requests og manuel kørsel af PR-workflowet kører installation fra
+- Pull requests og manuel kontrol med `publish=false` kører installation fra
   lockfil, lint, typekontrol, app-tests med coverage, Node-tests,
-  deployment-tests, Playwright i Chromium, produktionsbuild, Docker-build,
+  deployment-tests, Playwright i Chromium, produktionsbuild i Docker,
   containerkontrol og sikkerhedsscanning. Branches uden en PR har ingen separat
-  push-kontrol; `main` og versionstags håndteres af publish-workflowet.
+  push-kontrol; `main` og versionstags håndteres af samme CI/CD-workflow.
 - Push/merge til `main` og versionstags bygger og tester et release-image og
   publicerer det til `ghcr.io/movierater/devops_movierater`.
 - Det samme image testes før og efter publicering. Der bygges ikke et nyt image
@@ -23,11 +23,53 @@ Produktionsserveren er endnu ikke tilsluttet. Lad `DEPLOY_ENABLED` være tom ell
 Lint, typekontrol og alle tests er obligatoriske før publicering. Supabase-tests
 bruger mocks og syntetiske værdier, så CI ikke behøver adgang til
 produktionsdatabasen. Browser-testene bruger også syntetisk konfiguration,
-adskilt fra produktionskonfigurationen. Begge workflows indeholder de samme testgrupper;
-det indgående separate `ci.yml` er samlet med dem for at undgå parallelle
-unit- og build-jobs for samme hændelse. Opdateringer af en åben PR udløser én
-PR-kørsel, uden en ekstra kontrol fra branchens push.
+adskilt fra produktionskonfigurationen. Alle hændelser bruger det samme
+`test`-job i **CI / CD** (`docker-publish.yml`). Derefter kører enten `docker`
+med læseadgang på PR eller `publish` med skriveret til GHCR på main/versionstags.
+`deploy` afhænger af en godkendt publicering. Opdateringer af en åben PR
+udløser én kørsel, uden en ekstra kontrol fra branchens push.
 Containerkontrollen tester også assets, SPA-fallback, cache, gzip og rettigheder.
+
+Docker-build og kontrol er samlet i `.github/actions/docker/action.yml`.
+Trivy-scanning og sårbarhedspolitik er samlet i `.github/actions/scan/action.yml`
+og genbruges også ved deployment. Versionsmærkning og kontrol af eksisterende
+commit-images ligger i `scripts/publish-image.mjs`, så YAML-filerne kun beskriver
+rækkefølgen. De manuelle deployment- og rollback-valg findes stadig i `deploy.yml`.
+
+Under **Actions → CI / CD → Run workflow** er `publish` slået til som standard.
+Slå det fra for en manuel kontrol uden publicering eller serveradgang.
+
+## Lektion 08
+
+Alle 31 sider i [Lektion08.pdf](../Lektion08.pdf) er gennemgået, inklusive
+tekst og diagrammer, der er indsat som billeder. Principperne bruges sådan:
+
+| Sider | Indhold i lektionen | Brug i MovieRater |
+| --- | --- | --- |
+| 1-2 og 31 | Lektionens emne og opgaven om at anvende CI/CD i projektet. | GitHub Actions automatiserer test, build, publicering og deployment. |
+| 3-9 | Continuous integration med automatiske builds og tests for hver ændring. | `test` kører app-, pipeline-, integrations- og browser-tests. Derefter bygger Dockerfile frontenden og imaget, som kontrolleres med HTTP-tests. |
+| 10-12 | Continuous delivery gør validerede releases tilgængelige i et repository. | `publish` publicerer det testede image til GHCR og gemmer den verificerede digest og releasekonfiguration. |
+| 13-15 | Continuous deployment udvider delivery med automatiseret produktion og kræver pålidelige tests. | `deploy` kræver bestået publicering, main og `DEPLOY_ENABLED=true`; HTTPS og healthchecks kontrolleres, og rollback bevares. |
+| 16-21 | DevOps, fælles værktøjer og sikkerhed gennem hele pipelinen. | Docker- og scanningstrin genbruges. PR-jobs har læseadgang, Trivy blokerer usikre releases, og deployment kontrollerer SSH-hostkey og image-digest. |
+| 22-30 | Optimering, ressourceforbrug og feedback fra pipeline-data; også et forskningsforslag med ML. | npm- og Docker-cache genbruges, eksisterende commit-images bevares, og det dobbelte frontend-build er fjernet. GitHub viser jobstatus, trinvarigheder, CI-summary og rapport-artifakter. |
+
+Frontendens `npm run build` køres i Dockerfile. Derfor er det ekstra build i
+`test`-jobbet fjernet. Et tidligere publiceret image for samme commit genbruges
+og kontrolleres igen før publicering; den release bliver ikke bygget om.
+
+Med `DEPLOY_ENABLED=false` slutter en main-release efter continuous delivery
+til GHCR. Med værdien `true` kaldes deployment automatisk. Hvis production
+Environment kræver en manuel godkendelse, venter deployment på den; det er en
+manuel godkendelse før produktion, som beskrevet i lektionens skelnen mellem
+delivery og fuldautomatisk deployment.
+
+ML-arkitekturen på side 22-30 er et avanceret optimeringseksempel. Denne
+forenkling bruger GitHub Actions' eksisterende feedback og cache. ML-modeller,
+træningsdata og en separat platform til anomalidetektion er ikke implementeret.
+Rapporterne bruges til at finde fejl og langsomme trin og følge udviklingen
+fra kørsel til kørsel.
+
+## Sikkerhed og reproducerbare builds
 
 Trivy scanner npm-dependencies, inklusive build- og testværktøjer, og runtime-imaget. Alle CRITICAL-fund og HIGH-fund
 med en tilgængelig rettelse stopper pipelinen. HIGH-fund uden rettelse vises i
@@ -66,11 +108,19 @@ Under **Settings → Secrets and variables → Actions → Variables**:
 | --- | --- |
 | `VITE_SUPABASE_URL` | Supabase-projektets URL. |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Offentlig nøgle med præfikset `sb_publishable_`. |
+| `VITE_TMDB_API_KEY` | Offentlig frontend-konfiguration til TMDB. |
+| `VITE_TMDB_BASE_URL` | `https://api.themoviedb.org/3` |
+| `VITE_TMDB_IMAGE_BASE` | `https://image.tmdb.org/t/p/original` |
+| `VITE_OMDB_API_KEY` | Offentlig frontend-konfiguration til OMDb. |
+| `VITE_OMDB_BASE_URL` | `https://www.omdbapi.com/` |
 | `DEPLOY_ENABLED` | `false` indtil opsætningen er færdig; derefter `true`. |
 
 Supabase-værdierne indbygges ved build og kan læses i browseren. Private nøgler,
 `service_role` og databasepasswords må aldrig gives til Vite. Ændringer af
 buildvariabler kræver et nyt image og en ny commit-reference.
+Eksisterende repository secrets med de samme `VITE_`-navne understøttes også
+og har forrang over variables. Serverindstillingerne kan tilsvarende ligge som
+environment variables eller som de eksisterende environment secrets.
 
 ### Production Environment
 
@@ -176,7 +226,7 @@ HTTPS-certifikat. Pipelinekontrollen slår ikke certifikatvalidering fra.
 ## Aktivér automatisk deployment
 
 1. Merge pipelineændringerne gennem en PR, og kontrollér at CI består.
-2. Sæt Supabase repository variables, og kontrollér at main-workflowet publicerer
+2. Sæt frontendens repository variables, og kontrollér at main-workflowet publicerer
    et image og et godkendt release-artifakt.
 3. Forbered server, SSH-adgang, GHCR-login, `.env.server`, DNS og firewall.
 4. Opret production Environment med de beskrevne variables, secrets og beskyttelser.
@@ -260,53 +310,31 @@ En healthy container alene beviser ikke fungerende Supabase-dataadgang eller
 authentication mod det rigtige projekt. De isolerede CI-tests kontrollerer ikke
 produktionsprojektets tabeller, adgangsregler eller brugere.
 
-## Implementerede filer
+## Pipelinefiler
 
-De eksisterende Dockerfiler, Compose-filer, Nginx og Caddy genbruges.
-
-| Ændrede filer | Formål |
+| Fil | Formål |
 | --- | --- |
-| `.github/workflows/docker-pr.yml` | Obligatoriske kvalitetskontroller, Playwright, Docker-test og scanning på PR eller ved manuel kørsel. |
-| `.github/workflows/docker-publish.yml` | Testet image til GHCR, digestkontrol og godkendt release-artifakt. |
-| `package.json`, `package-lock.json` | Låste lint/testværktøjer og scripts; sikkerhedsrettelse af `source-map-js`. |
-| `src/App.tsx` | Korrekte React hook-afhængigheder og switch-blok; samme funktionalitet. |
-| `src/models/supabase.ts`, `vite.config.ts` | Fælles validering af offentlig Supabase-konfiguration. |
-| `tsconfig.json` | Typekontrol af app, tests og Vite/Vitest-konfigurationer. |
-| `.dockerignore`, `.gitignore` | Udelukker lokal deployment-state og unødvendig dokumentation fra build. |
-| `README.md` | Kort startvejledning med link til denne komplette deploymentvejledning. |
-
-| Nye filer | Formål |
-| --- | --- |
-| `.github/workflows/deploy.yml` | Automatisk eller manuel deployment/rollback gennem production Environment. |
-| `scripts/release.mjs` | Verificerer publish-job, release-artifakt, image-digest og konfigurationshashes. |
-| `scripts/deploy-remote.mjs` | SSH-konfiguration, overførsel af godkendt snapshot og offentlig HTTPS-kontrol. |
-| `scripts/deploy.sh` | Serverens låste deployment, healthcheck, atomiske state og rollback. |
-| `scripts/check-vulnerabilities.mjs` | Validerer Trivy-rapporter og håndhæver sikkerhedspolitikken. |
-| `scripts/run-integration-tests.mjs` | Finder og kører alle shell-integrationstests rekursivt i `tests/`. |
-| `scripts/release.test.mjs`, `scripts/deploy-remote.test.mjs`, `scripts/check-vulnerabilities.test.mjs`, `scripts/pipeline-test-helpers.mjs` | Tests af godkendelse, afvisning, credentials, HTTP-fejl og scanning med isolerede fixtures. |
-| `tests/deploy.test.sh` | Linux-tests af deploymentfejl, filrettigheder, låsning, state og rollback. |
-| `eslint.config.mjs`, `vitest.config.ts` | Konfiguration af lint og app-tests. |
-| `src/App.test.tsx`, `src/models/supabase.test.ts`, `src/models/supabaseConfig.test.ts`, `src/test/setup.ts` | App- og Supabase-tests uden rigtige netværkskald. |
-| `playwright.config.ts`, `tests/e2e/smoke.spec.ts` | Chromium-test af den kørende MovieRater-app med isoleret server og Supabase-konfiguration. |
-| `tests/unit/smoke.test.ts` | Collaboratorens grundlæggende Vitest-kontrol, som køres sammen med app-testene. |
-| `src/models/supabaseConfig.ts` | Validering af nødvendige offentlige frontendvariabler. |
-| `.env.server.example` | Serverindstillinger uden credentials. |
-| `.gitattributes` | LF-linjeskift i scripts og workflows, også ved checkout på Windows. |
-| `docs/deployment.md` | GitHub-, server-, HTTPS-, aktiverings- og rollbackvejledning. |
+| `.github/workflows/docker-publish.yml` | Fælles CI/CD: test → Docker-kontrol på PR eller publicering på main/versionstags → deployment. |
+| `.github/workflows/deploy.yml` | Automatisk og manuel deployment samt rollback gennem production Environment. |
+| `.github/actions/docker/action.yml` | Fælles Docker-build, HTTP-kontrol, scanning og rapporter. |
+| `.github/actions/scan/action.yml` | Fælles Trivy-scanning og sårbarhedspolitik før publicering og deployment. |
+| `scripts/publish-image.mjs` | Versionsmærkning, genbrug af commit-images og publicering uden rebuild. |
+| `scripts/release.mjs` | Kontrol af godkendt release, digest og konfigurationshashes. |
+| `scripts/deploy-remote.mjs`, `scripts/deploy.sh` | SSH, HTTPS-kontrol, serverens release-state og rollback. |
+| `docker-compose*.yml` | Lokal kørsel, development, production og HTTPS; frontend-healthcheck arves fra imaget. |
+| `scripts/*.test.mjs`, `tests/deploy.test.sh` | Isolerede tests af publicering, sikkerhed, deployment og rollback. |
 
 App-tests opdages automatisk som `.test` og `.spec` i `src/` og `tests/unit/`.
 `npm run test:coverage` kører de samme app-tests med V8 coverage og rapporter i
-`coverage/`. Testopsætningen er samlet i `vitest.config.ts` og `src/test/setup.ts`.
+`coverage/`. Testopsætningen er samlet i `vitest.config.ts` og `tests/setup.ts`.
 Node-tests opdages
 rekursivt i `scripts/`, og shell-integrationstests som `.test.sh` og `.spec.sh`
 rekursivt i `tests/`. Playwright finder browser-tests i `tests/e2e/` via
-`playwright.config.ts`; disse tests køres separat fra Vitest. Collaboratorens
-Vitest-opsætning er samlet med den eksisterende, så `tests/setup.ts` og et
-ekstra `test`-afsnit i `vite.config.ts` ikke er nødvendige.
+`playwright.config.ts`; disse tests køres separat fra Vitest.
 
-Begge PR- og publish-workflows kører `npm run test:ci` (app-tests med coverage
+Det fælles `test`-job kører `npm run test:ci` (app-tests med coverage
 og Node-tests), `npm run test:integration` og `npm run test:e2e`; en fejl stopper
-det pågældende workflow før publicering. CI installerer Chromium med
+forløbet før publicering. CI installerer Chromium med
 `npx playwright install --with-deps chromium`. Lokalt installeres browseren med
 `npx playwright install chromium`, hvorefter `npm run test:e2e` starter
 Vite-serveren og browser-testene. På Linux kan systembiblioteker også kræve
@@ -317,6 +345,36 @@ dage for publish-kørsler. HTML-rapport og testresultater fra fejlede browser-te
 gemmes i 7 dage. Testserveren overskriver Supabase-variablerne med syntetiske
 frontendværdier, så lokal `.env` og produktionskonfiguration ikke bruges.
 Nye testværktøjer skal tilføjes eksplicit til pipelinekonfigurationen.
+
+## Gennemgang med Lektion 08 verificeret 12. november 2026
+
+- Hele PDF'en er gennemgået visuelt. Tabellen under Lektion 08 knytter
+  lektionens sider til de konkrete jobs, sikkerhedskontroller og rapporter.
+- Det ekstra frontend-build i `test` er fjernet; Dockerfile bygger fortsat
+  frontenden. Et CI-summary er tilføjet, og kursus-PDF'en er udelukket fra
+  Docker-buildets kontekst.
+- Produktionsbuild, YAML med job- og actionreferencer samt `git diff --check`
+  bestod. `npm run test:ci` bestod med 18 app-tests og 26 pipeline-tests ved
+  separat kørsel. Under den første samtidige kørsel med build ramte to UI-tests
+  deres tidsgrænse; testkonfiguration og tidsgrænser er ikke ændret.
+- Docker-motoren kørte ikke. Docker-build, Trivy, GitHub-publicering og
+  serverdeployment er derfor ikke verificeret på ny.
+
+## Forenkling verificeret 11. november 2026
+
+- YAML er reduceret fra 821 til 594 linjer inklusive de fælles actions.
+  PR og release bruger samme test-job og Docker-kontrol; sikkerhedsscanning,
+  versionsmærkning, digestkontrol, HTTPS og rollback er bevaret.
+- Lint, typekontrol, produktionsbuild, 18 app-tests med coverage og 26
+  pipeline-tests bestod. Seks nye tests dækker publicering og commit-tags.
+- YAML og jobreferencer samt alle fire Compose-konfigurationer blev valideret.
+  Compose-indstillingerne blev sammenlignet med de tidligere filer; kun de
+  dobbelte frontend-healthchecks er fjernet og arves nu fra imaget.
+- Browser-testen blev blokeret af lokal netværksadgang (`EACCES` på port 5173).
+  Linux-integrationstestene blev blokeret af Bash/WSL-adgang. Docker-motoren
+  kørte ikke, så container-build og Trivy blev ikke genkørt lokalt.
+- GitHub Actions, GHCR-publicering og serverdeployment er ikke kørt efter
+  forenklingen. De eksterne trin skal bekræftes ved næste GitHub-kørsel.
 
 ## PR-reviewrettelser verificeret 22. oktober 2026
 

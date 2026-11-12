@@ -21,4 +21,6 @@ test-results
 .deploy-state
 docs
 README.md
+# Local course material is not part of the frontend build.
+Lektion08.pdf
 .DS_Store
