@@ -1,4 +1,4 @@
-import { Search, Moon, Sun, Settings, Film } from 'lucide-react';
+import { Search, Moon, Sun, Settings, Film, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import {
   DropdownMenu,
@@ -21,12 +21,18 @@ interface HeaderProps {
   authLoading?: boolean;
   onSignIn?: () => void;
   onSignOut?: () => void;
+  onOpenTaste?: () => void;
+  /** True while the Suggest now screen is open (highlights its button). */
+  tasteActive?: boolean;
+  /** Clicking the logo goes home. */
+  onHome?: () => void;
   searchDropdown?: React.ReactNode;
 }
 
 export function Header({
   searchValue = '', onSearchChange, enabledRatings, onRatingsChange,
-  user = null, authLoading = false, onSignIn, onSignOut, searchDropdown
+  user = null, authLoading = false, onSignIn, onSignOut, 
+  onOpenTaste, tasteActive = false, onHome, searchDropdown,
  }: HeaderProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -68,12 +74,18 @@ export function Header({
     <header className="bg-background/95 backdrop-blur-sm border-b border-border px-6 py-3 sticky top-0 z-50">
       <div className="flex items-center gap-6 max-w-7xl mx-auto">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 flex-shrink-0 select-none">
+        <button
+          type="button"
+          onClick={onHome}
+          disabled={!onHome}
+          aria-label="MovieRater home"
+          className="flex items-center gap-2.5 flex-shrink-0 select-none disabled:cursor-default"
+        >
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <Film className="w-4 h-4 text-primary-foreground" />
           </div>
           <span className="text-base font-semibold tracking-tight">MovieRater</span>
-        </div>
+        </button>
 
         {/* Search bar - centered and prominent */}
         <div className="flex-1 max-w-2xl mx-auto relative">
@@ -92,6 +104,18 @@ export function Header({
 
         {/* Right controls */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* AI prototype: Suggest now */}
+          {onOpenTaste && (
+            <button
+              onClick={onOpenTaste}
+              aria-current={tasteActive ? 'page' : undefined}
+              className={`h-9 px-3 flex items-center gap-1.5 rounded-lg text-sm transition-opacity hover:opacity-90 ${
+                tasteActive ? 'bg-primary/15 text-primary ring-1 ring-primary' : 'bg-primary text-primary-foreground'}`}
+            >
+              <Sparkles className="w-4 h-4" />
+              Suggest now
+            </button>
+          )}
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}

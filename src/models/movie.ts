@@ -34,4 +34,4 @@ export interface EnabledRatings {
   metacritic: boolean;
 }
 
-export type Screen = 'home' | 'details';
+export type Screen = 'home' | 'details' | 'taste';
