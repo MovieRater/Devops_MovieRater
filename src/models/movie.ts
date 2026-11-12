@@ -4,23 +4,28 @@ export interface Rating {
   metacritic: number;
 }
 
-export interface Movie {
+export interface BasicMovie {
   id: number;
   title: string;
   year: number;
-  director: string;
-  duration: number;
-  rating: string;
-  views: string;
-  summary: string;
+  posterUrl: string;
   genre: string[];
+}
+
+export interface TrendingMovie extends BasicMovie {
+  director: string;
+  ratings: Rating;
+  imdbId: string | null;
+  retryNeeded?: boolean;
+}
+
+export interface Movie extends TrendingMovie {
+  duration: number;
+  ageRating: string;
+  summary: string;
   cast: string[];
   language: string;
   country: string;
-  ratings: Rating;
-  posterUrl: string;
-  imdbId: string | null;
-  retryNeeded?: boolean;
 }
 
 export interface EnabledRatings {
@@ -29,4 +34,4 @@ export interface EnabledRatings {
   metacritic: boolean;
 }
 
-export type Screen = 'home' | 'search' | 'details' | 'taste';
+export type Screen = 'home' | 'details' | 'taste';

@@ -86,7 +86,11 @@ export function mapOmdbRatings(omdb: OmdbMovieResponse): OmdbRatings {
 // -------------------------------------------------------------
 // LOCAL CACHE (OMDB HAS STRICT LIMITS)
 // -------------------------------------------------------------
-
+// TODO:
+// Add cache expiration (TTL).
+// Current implementation stores ratings indefinitely in localStorage.
+// Consider 24h-7d expiration since ratings for newly released movies
+// can change significantly during the first weeks after release.
 const OMDB_CACHE_KEY = "omdb_cache";
 
 function loadOmdbCache(): Record<string, OmdbRatings> {

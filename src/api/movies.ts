@@ -1,18 +1,23 @@
 import {
     getTrendingMovies,
-    mapTmdbMovie,
-    getMovieDetails,
     getMovieCredits,
     safeGetExternalIds,
     TmdbCrewMember,
     TmdbCastMember,
-    TmdbMovieDetails,
-    SafeExternalIdsResponse
+    SafeExternalIdsResponse,
+    mapTmdbBasicMovie,
+    searchMovies,
+    getMovieDetails,
+    getMovieReleaseDates
 } from "./tmdb";
 
 import { getOmdbRatingsCached } from "./omdb";
 
-import { Movie } from "@/models/movie";
+import {
+    BasicMovie,
+    TrendingMovie,
+    Movie
+} from "@/models/movie";
 
 import {
     loadCache,
@@ -21,52 +26,80 @@ import {
     updateCacheTimestamp
 } from "./cache";
 
+let genreMap: Record<number, string> = {};
+
+export function setGenreMap(
+    map: Record<number, string>
+) {
+    genreMap = map;
+}
+
+function mapGenres(
+    genres: string[]
+): string[] {
+    return genres.map(
+        genreId =>
+            genreMap[Number(genreId)]
+            || "Unknow"
+    )
+}
+
 
 // -------------------------------------------------------------
 // UNIFIED MOVIE PIPELINE (TMDB + OMDB + RETRY)
 // -------------------------------------------------------------
 
-export async function buildMovie(movie: Movie): Promise<Movie> {
-    let retryNeeded = false;
+export async function buildTrendingMovie(movie: BasicMovie): Promise<TrendingMovie> {
 
-    // 1. TMDB enrichment (details + credits + external IDs)
-    let details:
-        TmdbMovieDetails;
+    let retryNeeded = false;
     let credits;
     let externalIds:
         SafeExternalIdsResponse
 
     try {
-        [details, credits] = await Promise.all([
-            getMovieDetails(movie.id),
-            getMovieCredits(movie.id)
+        [credits, externalIds] = await Promise.all([
+            getMovieCredits(movie.id),
+            safeGetExternalIds(movie.id)
         ]);
-
-        externalIds = await safeGetExternalIds(movie.id);
 
         if (externalIds.retryNeeded) {
             retryNeeded = true;
         }
     } catch (err) {
         console.warn(`TMDB failed for movie ${movie.id}:`, err);
-        retryNeeded = true;
 
         // Return partial movie, retry later
-        return { ...movie, retryNeeded };
+        return {
+            ...movie,
+            director: "Unknown",
+
+            imdbId: null,
+
+            ratings: {
+                imdb: 0,
+                rottenTomatoes: 0,
+                metacritic: 0
+            },
+            retryNeeded: true
+        };
     }
 
-    const director = credits.crew?.find((c: TmdbCrewMember) => c.job === "Director")?.name || "Unknown";
-    const cast = credits.cast?.slice(0, 10).map((c: TmdbCastMember) => c.name) || [];
+    const director =
+        credits.crew?.find(
+            (c: TmdbCrewMember) => c.job === "Director"
+        )?.name || "Unknown";
 
-    let enriched: Movie = {
+    let enriched: TrendingMovie = {
         ...movie,
         director,
-        duration: details.runtime || 0,
-        summary: details.overview || "",
-        cast,
-        language: details.original_language || "",
-        country: details.origin_country?.[0] || "",
         imdbId: externalIds.imdb_id || null,
+
+        ratings: {
+            imdb: 0,
+            rottenTomatoes: 0,
+            metacritic: 0
+        },
+
         retryNeeded
     };
 
@@ -77,15 +110,70 @@ export async function buildMovie(movie: Movie): Promise<Movie> {
     }
 
     try {
-        const ratings = await getOmdbRatingsCached(enriched.imdbId);
-        enriched = { ...enriched, ratings };
-    } catch (err) {
-        console.warn(`OMDB failed for movie ${movie.id}:`, err);
+        const ratings =
+            await getOmdbRatingsCached(
+                enriched.imdbId
+            );
+
+        enriched = {
+            ...enriched,
+            ratings
+        };
+
+    } catch {
+        console.warn(`OMDB failed for movie ${movie.id}:`);
         enriched.retryNeeded = true;
     }
 
     return enriched;
 }
+
+export async function buildMovie(
+    movie: BasicMovie | TrendingMovie
+): Promise<Movie> {
+
+    const trendingMovie =
+        "ratings" in movie
+            ? movie
+            : await buildTrendingMovie(movie)
+
+    const [details, credits, releaseDates] =
+        await Promise.all([
+            getMovieDetails(trendingMovie.id),
+            getMovieCredits(trendingMovie.id),
+            getMovieReleaseDates(trendingMovie.id)
+        ]);
+
+    const cast =
+        credits.cast
+            ?.slice(0, 10)
+            .map(
+                (c: TmdbCastMember) => c.name
+            ) || [];
+
+    const usRelease =
+        releaseDates.results.find(
+            r => r.iso_3166_1 === "US"
+        );
+
+    const ageRating =
+        usRelease?.release_dates.find(
+            r => r.certification
+        )?.certification || "N/A";
+
+
+    return {
+        ...trendingMovie,
+
+        duration: details.runtime || 0,
+        summary: details.overview || "",
+        cast,
+        language: details.original_language || "",
+        country: details.origin_country?.[0] || "",
+        ageRating
+    };
+}
+
 
 
 // -------------------------------------------------------------
@@ -96,34 +184,24 @@ const TRENDING_CACHE_KEY = "tmdb_trending_cache";
 const TRENDING_CACHE_TIME_KEY = "tmdb_trending_cache_time";
 const TRENDING_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-function loadCachedTrending(): Movie[] | null {
+function loadCachedTrending(): TrendingMovie[] | null {
     if (isCacheExpired(TRENDING_CACHE_TIME_KEY, TRENDING_TTL_MS)) {
         return null;
     }
 
-    return loadCache<Movie[]>(TRENDING_CACHE_KEY);
+    return loadCache<TrendingMovie[]>(TRENDING_CACHE_KEY);
 }
 
-function saveTrendingCache(movies: Movie[]) {
+function saveTrendingCache(movies: TrendingMovie[]) {
     saveCache(TRENDING_CACHE_KEY, movies);
     updateCacheTimestamp(TRENDING_CACHE_TIME_KEY);
 }
 
 // -------------------------------------------------------------
-// SINGLE MOVIE PIPELINE (DETAILS SCREEN)
-// -------------------------------------------------------------
-
-export async function loadMovieDetails(id: number): Promise<Movie> {
-    const base = { id } as Movie;
-    return await buildMovie(base);
-}
-
-
-// -------------------------------------------------------------
 // FULL TRENDING PIPELINE
 // -------------------------------------------------------------
 
-export async function loadTrendingMovies(): Promise<Movie[]> {
+export async function loadTrendingMovies(): Promise<TrendingMovie[]> {
     // 1. Try cache
     const cached = loadCachedTrending();
 
@@ -136,7 +214,7 @@ export async function loadTrendingMovies(): Promise<Movie[]> {
             for (const movie of retryMovies) {
                 await new Promise(r => setTimeout(r, 500)); // avoid rate limit
 
-                const updated = await buildMovie(movie);
+                const updated = await buildTrendingMovie(movie);
 
                 const index = cached.findIndex(m => m.id === movie.id);
                 cached[index] = updated;
@@ -152,13 +230,47 @@ export async function loadTrendingMovies(): Promise<Movie[]> {
     const tmdbTrending = await getTrendingMovies();
 
     // 3. Map TMDB → Movie
-    const mapped = tmdbTrending.results.map(mapTmdbMovie);
+    const mapped =
+        tmdbTrending.results
+            .map(mapTmdbBasicMovie)
+            .map(movie => ({
+                ...movie,
+                genre: mapGenres(movie.genre)
+            }));
 
     // 4. Build complete movies (TMDB + OMDB)
-    const finalMovies = await Promise.all(mapped.map(buildMovie));
+    const finalMovies = await Promise.all(mapped.map(buildTrendingMovie));
 
     // 5. Cache final movies
     saveTrendingCache(finalMovies);
 
     return finalMovies;
 }
+
+export async function loadSearchResults(
+    query: string
+): Promise<BasicMovie[]> {
+
+    if (!query.trim()) {
+        return [];
+    }
+
+    const results =
+        await searchMovies(query);
+
+    return results.results
+        .map(mapTmdbBasicMovie)
+        .map(movie => ({
+            ...movie,
+            genre: mapGenres(movie.genre)
+        }))
+        .slice(0, 5)
+}
+
+export async function loadMovieDetails(
+    movie: BasicMovie | TrendingMovie
+): Promise<Movie> {
+    return buildMovie(movie);
+}
+
+
