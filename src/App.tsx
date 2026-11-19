@@ -10,6 +10,7 @@ import { loadTrendingMovies, loadSearchResults, loadMovieDetails, setGenreMap as
 import { getGenres, TmdbGenre } from "@/api/tmdb";
 import { SearchDropdown} from "@/views/components/SearchDropdown";
 import { useDisplayPrefsStore } from './controllers/useDisplayPrefsStore';
+import { useSyncPreferences } from './controllers/useSyncPreferences';
 
 
 
@@ -29,7 +30,7 @@ export default function App() {
     sortOrder: 'desc'
   });
   const enabledRatings = useDisplayPrefsStore((s) => s.enabledRatings);
-  const setEnabledRatings = useDisplayPrefsStore((s) => s.setEnabledRatings);
+  const changeRatings = useSyncPreferences();
   const { user, loading, signIn, signOut } = useAuth();
   const [trendingMovies, setTrendingMovies] = useState<TrendingMovie[]>([]);
   const [availableGenres, setAvailableGenres] = useState<string[]>([]);
@@ -193,7 +194,7 @@ export default function App() {
         searchValue={searchQuery}
         onSearchChange={handleSearchChange}
         enabledRatings={enabledRatings}
-        onRatingsChange={setEnabledRatings}
+        onRatingsChange={changeRatings}
         user={user}
         authLoading={loading}
         onSignIn={() => signIn('github')}

@@ -23,6 +23,11 @@ vi.mock('@/api/tmdb', async () => {
   return { getGenres: vi.fn(async () => ({ genres: fixtureGenres })) };
 });
 
+vi.mock('@/models/profileRepository', () => ({
+  getEnabledRatings: vi.fn().mockResolvedValue(null),
+  saveEnabledRatings: vi.fn().mockResolvedValue(undefined),
+}));
+
 const SEARCH_PLACEHOLDER = 'Search for movies, directors...';
 const TOTAL_MOVIES = 6; // the five originals plus The Dark Knight, which is no longer excluded
 
