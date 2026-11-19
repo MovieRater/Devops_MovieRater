@@ -16,7 +16,7 @@ export default defineConfig({
       'src/**/*.{test,spec}.{js,jsx,ts,tsx,mjs,mts,cjs,cts}',
       'tests/unit/**/*.{test,spec}.{js,jsx,ts,tsx,mjs,mts,cjs,cts}',
     ],
-    coverage: { provider: 'v8', reporter: ['text', 'lcov'], include: ['src/**'] },
+    coverage: { provider: 'v8', reporter: ['text', 'lcov'], include: ['src/**', 'server/**'] },
     clearMocks: true,
   },
 });
