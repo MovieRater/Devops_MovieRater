@@ -26,6 +26,13 @@ export const authRepository = {
         return data.session ? toAppUser(data.session.user) : null;
     },
 
+    async deleteAccount(): Promise<void> {
+    const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
+    if (error) throw error;
+    // The account no longer exists server-side, so only clear the local session
+    await supabase.auth.signOut({ scope: 'local' });
+    },
+
     onChange(callback: (user: AppUser | null) => void): () => void {
         const { data } = supabase.auth.onAuthStateChange((_event, session) => {
             callback(session ? toAppUser(session.user) : null);

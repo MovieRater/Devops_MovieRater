@@ -21,6 +21,7 @@ interface HeaderProps {
   authLoading?: boolean;
   onSignIn?: () => void;
   onSignOut?: () => void;
+  onDeleteAccount?: () => Promise<void>;
   onOpenTaste?: () => void;
   /** True while the Suggest now screen is open (highlights its button). */
   tasteActive?: boolean;
@@ -31,7 +32,7 @@ interface HeaderProps {
 
 export function Header({
   searchValue = '', onSearchChange, enabledRatings, onRatingsChange,
-  user = null, authLoading = false, onSignIn, onSignOut, 
+  user = null, authLoading = false, onSignIn, onSignOut, onDeleteAccount,
   onOpenTaste, tasteActive = false, onHome, searchDropdown,
  }: HeaderProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -176,6 +177,7 @@ export function Header({
             loading={authLoading}
             onSignIn={() => onSignIn?.()}
             onSignOut={() => onSignOut?.()}
+            onDeleteAccount={async () => { await onDeleteAccount?.(); }}
           />
         </div>
       </div>
