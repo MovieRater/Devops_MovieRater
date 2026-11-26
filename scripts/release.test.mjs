@@ -98,3 +98,17 @@ test('a stale automatic release is skipped before pull or server access', () => 
     assert.equal(f.events().filter((event) => event.program).length, 0);
   } finally { f.cleanup(); }
 });
+
+test('a Staging release is checked against the Staging branch, not main', () => {
+  const staging = { GITHUB_REF: 'refs/heads/Staging', GITHUB_REF_NAME: 'Staging', AUTOMATIC: 'true' };
+  const f = fixture();
+  try {
+    const result = f.run('./release.mjs', 'resolve', staging);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /skip: false/);
+    const urls = f.events().map((event) => event.url).filter(Boolean);
+    assert(urls.some((url) => url.endsWith('/git/ref/heads/Staging')));
+    assert(urls.some((url) => url.endsWith(`/compare/${revision}...Staging`)));
+    assert(!urls.some((url) => url.endsWith('/git/ref/heads/main') || url.endsWith('...main')));
+  } finally { f.cleanup(); }
+});

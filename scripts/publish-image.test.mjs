@@ -67,6 +67,21 @@ test('a stale main run publishes only its immutable commit tag', () => {
   } finally { f.cleanup(); }
 });
 
+test('the Staging branch publishes its own floating tag and never main or latest', () => {
+  const staging = { GITHUB_REF: 'refs/heads/Staging', GITHUB_REF_NAME: 'Staging' };
+  for (const [mainRevision, expected] of [[revision, [`sha-${revision}`, 'staging']], ['c'.repeat(40), [`sha-${revision}`]]]) {
+    const f = fixture({ manifestStatus: 404, mainRevision });
+    try {
+      assert.equal(run(f, 'prepare', staging).status, 0);
+      assert.equal(run(f, 'publish', { ...staging, REUSED: 'false' }).status, 0);
+      const pushes = f.events().filter((event) => event.program === 'docker' && event.args[0] === 'push');
+      assert.deepEqual(pushes.map((event) => event.args[1]), expected.map((tag) => `${image}:${tag}`));
+      assert(f.events().some((event) => event.url?.endsWith('/git/ref/heads/Staging')));
+      assert(!f.events().some((event) => event.url?.endsWith('/git/ref/heads/main')));
+    } finally { f.cleanup(); }
+  }
+});
+
 test('stable releases get major/minor aliases and prereleases keep their exact version', () => {
   for (const [version, suffixes] of [
     ['v1.2.3', [`sha-${revision}`, 'v1.2.3', '1.2.3', '1.2', '1']],

@@ -10,6 +10,8 @@ const imageName = `ghcr.io/${repository.toLowerCase()}`;
 const bundleFiles = ['docker-compose.prod.yml', 'docker-compose.https.yml', 'Caddyfile', 'scripts/deploy.sh'];
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const revisionPattern = /^[a-f0-9]{40}$/;
+// A release is checked against the branch that started the workflow: main or Staging.
+const branch = ['main', 'Staging'].find((name) => process.env.GITHUB_REF === `refs/heads/${name}`) || 'main';
 const imagePattern = new RegExp(`^${imageName.replaceAll('.', '\\.') }@sha256:[a-f0-9]{64}$`);
 
 function command(program, args) {
@@ -129,15 +131,15 @@ async function resolve() {
   if (expectedImage) assert(imagePattern.test(expectedImage), 'Invalid or non-allowlisted image digest');
   if (requestedRun) assert(/^\d+$/.test(requestedRun), 'Invalid publishing run ID');
   if (process.env.AUTOMATIC === 'true') {
-    const main = await api('git/ref/heads/main');
-    if (main.object.sha !== revision) {
+    const head = await api(`git/ref/heads/${branch}`);
+    if (head.object.sha !== revision) {
       output('skip', 'true');
-      console.log('Skipping stale automatic deployment: a newer commit is already on main.');
+      console.log(`Skipping stale automatic deployment: a newer commit is already on ${branch}.`);
       return;
     }
   }
-  const comparison = await api(`compare/${revision}...main`);
-  assert(['ahead', 'identical'].includes(comparison.status), 'Release revision must be part of the approved main history');
+  const comparison = await api(`compare/${revision}...${branch}`);
+  assert(['ahead', 'identical'].includes(comparison.status), `Release revision must be part of the approved ${branch} history`);
   const runs = requestedRun
     ? [await api(`actions/runs/${requestedRun}`)]
     : (await api(`actions/workflows/docker-publish.yml/runs?head_sha=${revision}&per_page=50`)).workflow_runs;
@@ -177,7 +179,7 @@ async function resolve() {
 async function fresh() {
   assert(revisionPattern.test(process.env.RELEASE_REVISION), 'Invalid deployment revision');
   const stale = process.env.AUTOMATIC === 'true'
-    && (await api('git/ref/heads/main')).object.sha !== process.env.RELEASE_REVISION;
+    && (await api(`git/ref/heads/${branch}`)).object.sha !== process.env.RELEASE_REVISION;
   output('skip', String(stale));
   if (stale) console.log('Skipping an automatic deployment superseded while the container was being checked.');
 }

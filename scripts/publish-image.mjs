@@ -8,6 +8,9 @@ const image = `ghcr.io/${repository.toLowerCase()}`;
 const revision = process.env.GITHUB_SHA;
 const localImage = `movierater-ci:${revision}`;
 const commitTag = `${image}:sha-${revision}`;
+// Floating tags per release branch; version tags are handled separately.
+const branchTags = { main: ['main', 'latest'], Staging: ['staging'] };
+const branch = Object.keys(branchTags).find((name) => process.env.GITHUB_REF === `refs/heads/${name}`);
 const tagsFile = join(process.env.RUNNER_TEMP || '.', 'movierater-image-tags.json');
 const configuration = [
   'VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY', 'VITE_TMDB_API_KEY',
@@ -40,7 +43,7 @@ async function manifestExists() {
 }
 
 function versionTags() {
-  if (process.env.GITHUB_REF === 'refs/heads/main') return [commitTag, `${image}:main`, `${image}:latest`];
+  if (branch) return [commitTag, ...branchTags[branch].map((tag) => `${image}:${tag}`)];
   const version = process.env.GITHUB_REF_NAME;
   const match = /^v([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9A-Za-z.-]+)?$/.exec(version);
   assert(process.env.GITHUB_REF === `refs/tags/${version}` && match,
@@ -73,17 +76,17 @@ async function publish() {
     assert(!await manifestExists(), 'Commit image appeared during this run. Rerun to test and reuse it instead of overwriting it');
   }
   let current = true;
-  if (process.env.GITHUB_REF === 'refs/heads/main') {
-    const response = await request(`https://api.github.com/repos/${repository}/git/ref/heads/main`, {
+  if (branch) {
+    const response = await request(`https://api.github.com/repos/${repository}/git/ref/heads/${branch}`, {
       Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: 'application/vnd.github+json',
     });
-    assert(response.ok, `Main revision lookup failed (HTTP ${response.status})`);
+    assert(response.ok, `Branch revision lookup failed (HTTP ${response.status})`);
     current = (await response.json()).object.sha === revision;
-    if (!current) console.log('A newer commit is on main; only publish the immutable commit tag.');
+    if (!current) console.log(`A newer commit is on ${branch}; only publish the immutable commit tag.`);
   }
   for (const tag of tags) {
     if (reused && tag === commitTag) continue;
-    if (!current && [`${image}:main`, `${image}:latest`].includes(tag)) continue;
+    if (!current && tag !== commitTag) continue;
     docker('tag', localImage, tag);
     docker('push', tag);
   }

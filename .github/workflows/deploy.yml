@@ -35,12 +35,13 @@ permissions:
 jobs:
   production:
     name: Deploy verified digest
-    if: github.repository == 'MovieRater/Devops_MovieRater' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    if: github.repository == 'MovieRater/Devops_MovieRater' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Staging') && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    environment: production
+    # The branch selects the server: each environment holds its own DEPLOY_* settings.
+    environment: ${{ github.ref == 'refs/heads/Staging' && 'staging' || 'production' }}
     concurrency:
-      group: movierater-production
+      group: movierater-${{ github.ref == 'refs/heads/Staging' && 'staging' || 'production' }}
       queue: max
       cancel-in-progress: false
     env:

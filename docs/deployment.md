@@ -240,6 +240,26 @@ Deployment starter kun efter godkendt publicering og de relevante environment-
 regler. Manglende serverindstillinger giver en tydelig fejl før SSH-forbindelsen.
 Workflow-concurrency og serverens `flock` beskytter mod samtidige deployments.
 
+## Staging
+
+Branchen `Staging` har sin egen server. Workflowet vælger miljø ud fra branchen:
+`main` bruger GitHub Environment `production`, og `Staging` bruger `staging`.
+Hvert environment har sine egne `DEPLOY_*`-værdier, så de to servere aldrig
+deler adgang.
+
+- Push til `Staging` kører de samme tests, publicerer imaget med
+  `sha-<commit-id>` og det flydende tag `staging`, og deployer til staging.
+  Tags `main` og `latest` flyttes kun fra `main`.
+- Releasekontrollen sammenligner med `Staging` i stedet for `main`.
+- Environment `staging` skal have alle syv `DEPLOY_*`-værdier. En manglende
+  værdi falder tilbage til repositoryets secret med samme navn, og de peger på
+  produktion.
+- Staging-serveren har allerede en Caddy på port 80/443. Derfor bruges
+  `MOVIERATER_HTTPS=false` og `HTTP_PORT=8080` i `.env.server`, og serverens
+  Caddy sender domænet videre til `127.0.0.1:8080`.
+- Imaget bygges med de samme `VITE_`-værdier som produktion. Staging bruger
+  derfor samme Supabase-projekt, indtil der oprettes et separat.
+
 ## Manuel deployment og rollback
 
 Den anbefalede metode er GitHub **Actions → deployment-workflow → Run workflow**

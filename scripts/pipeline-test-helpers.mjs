@@ -53,7 +53,7 @@ globalThis.fetch = async (url) => {
     if (parsed.pathname.includes('/manifests/')) return new Response(f.manifest, { status: f.manifestStatus || 200, headers: { 'docker-content-digest': f.manifestDigest } });
   }
   if (parsed.hostname === 'api.github.com') {
-    if (parsed.pathname.endsWith('/git/ref/heads/main')) return json({ object: { sha: f.mainRevision } });
+    if (['main', 'Staging'].some((name) => parsed.pathname.endsWith('/git/ref/heads/' + name))) return json({ object: { sha: f.mainRevision } });
     if (parsed.pathname.includes('/compare/')) return json({ status: f.comparison });
     if (parsed.pathname.endsWith('/workflows/docker-publish.yml/runs')) return json({ workflow_runs: [f.run] });
     if (parsed.pathname.endsWith('/runs/100')) return json(f.run);
@@ -111,6 +111,7 @@ export function fixture(overrides = {}) {
         cwd: directory, timeout: 10_000, encoding: 'utf8',
         env: { ...process.env, PIPELINE_TEST_FIXTURE: fixturePath, GITHUB_REPOSITORY: repository,
           GH_TOKEN: 'fixture', GITHUB_ACTOR: 'fixture', GITHUB_SHA: revision,
+          GITHUB_REF: 'refs/heads/main', GITHUB_REF_NAME: 'main',
           GITHUB_RUN_ID: '100', GITHUB_RUN_ATTEMPT: '1', RUNNER_TEMP: directory,
           GITHUB_OUTPUT: outputs, RELEASE_REVISION: revision,
           SSH_DIR: sshDirectory, DEPLOY_HOST: 'server.example.test', DEPLOY_USER: 'movierater',

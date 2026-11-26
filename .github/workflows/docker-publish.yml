@@ -3,7 +3,7 @@ name: CI / CD
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, Staging]
     tags: ["v*"]
   workflow_dispatch:
     inputs:
@@ -121,7 +121,7 @@ jobs:
     # This name also verifies existing release records during rollback.
     name: Test, scan and publish image
     needs: test
-    if: github.repository == 'MovieRater/Devops_MovieRater' && (github.event_name == 'push' || inputs.publish) && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: github.repository == 'MovieRater/Devops_MovieRater' && (github.event_name == 'push' || inputs.publish) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Staging' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     permissions:
@@ -199,11 +199,11 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-  # Continuous deployment: deploy a verified main release when enabled.
+  # Continuous deployment: main goes to production, Staging to the staging server.
   deploy:
     name: Deploy
     needs: publish
-    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true' && needs.publish.outputs.image_ref != ''
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Staging') && vars.DEPLOY_ENABLED == 'true' && needs.publish.outputs.image_ref != ''
     permissions:
       contents: read
       packages: read
