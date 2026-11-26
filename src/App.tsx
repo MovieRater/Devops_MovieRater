@@ -31,7 +31,7 @@ export default function App() {
   });
   const enabledRatings = useDisplayPrefsStore((s) => s.enabledRatings);
   const changeRatings = useSyncPreferences();
-  const { user, loading, signIn, signOut } = useAuth();
+  const { user, loading, signIn, signOut, deleteAccount } = useAuth();
   const [trendingMovies, setTrendingMovies] = useState<TrendingMovie[]>([]);
   const [availableGenres, setAvailableGenres] = useState<string[]>([]);
   const [genreMap, setGenreMap] = useState<Record<number, string>>({});
@@ -199,6 +199,7 @@ export default function App() {
         authLoading={loading}
         onSignIn={() => signIn('github')}
         onSignOut={signOut}
+        onDeleteAccount={deleteAccount}
         onOpenTaste={() => setCurrentScreen('taste')}
         tasteActive={currentScreen === 'taste'}
         onHome={() => setCurrentScreen('home')}

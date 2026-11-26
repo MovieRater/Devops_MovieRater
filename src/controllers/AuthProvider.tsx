@@ -7,6 +7,7 @@ interface AuthState {
     loading: boolean;
     signIn: (provider: OAuthProvider) => void;
     signOut: () => void;
+    deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -31,6 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (error) console.error('Sign-in failed:', error.message);
         },
         signOut: () => { authRepository.signOut(); },
+        deleteAccount: async () => {
+            await authRepository.deleteAccount();
+            setUser(null);
+        },
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
