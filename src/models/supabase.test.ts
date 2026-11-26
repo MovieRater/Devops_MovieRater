@@ -9,7 +9,9 @@ describe('Supabase client initialization', () => {
     vi.stubEnv('VITE_SUPABASE_URL', ' https://example.supabase.co ');
     vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', ' sb_publishable_ci-test ');
     const { supabase } = await import('./supabase');
-    expect(mocks.createClient).toHaveBeenCalledWith('https://example.supabase.co', 'sb_publishable_ci-test');
+    expect(mocks.createClient).toHaveBeenCalledWith('https://example.supabase.co', 'sb_publishable_ci-test', 
+      { auth: { flowType: 'pkce' } },
+    );
     expect(supabase).toEqual({ mocked: true });
     expect(fetch).not.toHaveBeenCalled();
   });

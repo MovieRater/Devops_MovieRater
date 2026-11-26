@@ -11,6 +11,7 @@ import { getGenres, TmdbGenre } from "@/api/tmdb";
 import { SearchDropdown} from "@/views/components/SearchDropdown";
 import { useDisplayPrefsStore } from './controllers/useDisplayPrefsStore';
 import { useSyncPreferences } from './controllers/useSyncPreferences';
+import { useSyncReactions } from './controllers/useReactions';
 
 
 
@@ -31,6 +32,7 @@ export default function App() {
   });
   const enabledRatings = useDisplayPrefsStore((s) => s.enabledRatings);
   const changeRatings = useSyncPreferences();
+  useSyncReactions();
   const { user, loading, signIn, signOut, deleteAccount } = useAuth();
   const [trendingMovies, setTrendingMovies] = useState<TrendingMovie[]>([]);
   const [availableGenres, setAvailableGenres] = useState<string[]>([]);
