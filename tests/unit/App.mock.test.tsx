@@ -28,6 +28,12 @@ vi.mock('@/models/profileRepository', () => ({
   saveEnabledRatings: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('@/models/reactionRepository', () => ({
+  getReactions: vi.fn().mockResolvedValue({}),
+  saveReaction: vi.fn().mockResolvedValue(undefined),
+  removeReaction: vi.fn().mockResolvedValue(undefined),
+}))
+
 const SEARCH_PLACEHOLDER = 'Search for movies, directors...';
 const TOTAL_MOVIES = 6; // the five originals plus The Dark Knight, which is no longer excluded
 
