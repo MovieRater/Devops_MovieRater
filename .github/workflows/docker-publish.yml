@@ -209,6 +209,7 @@ jobs:
       packages: read
       actions: read
     uses: ./.github/workflows/deploy.yml
+    secrets: inherit
     with:
       image_ref: ${{ needs.publish.outputs.image_ref }}
       revision: ${{ github.sha }}
